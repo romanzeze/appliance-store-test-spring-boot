@@ -16,7 +16,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class User extends Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

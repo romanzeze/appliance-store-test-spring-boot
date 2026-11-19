@@ -2,16 +2,18 @@ package com.epam.rd.autocode.assessment.appliances.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
 
 import java.util.Set;
 
 @Entity
+@SQLDelete(sql = "UPDATE orders SET deleted = true WHERE id = ?")
 @Table(name = "orders")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Orders {
+public class Orders extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
