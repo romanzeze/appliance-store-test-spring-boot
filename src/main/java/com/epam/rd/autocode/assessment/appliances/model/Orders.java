@@ -3,6 +3,7 @@ package com.epam.rd.autocode.assessment.appliances.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.Set;
 
@@ -22,6 +23,7 @@ public class Orders extends BaseEntity {
     private Client client;
     @ManyToOne
     private Employee employee;
+    @SQLRestriction("deleted = false")
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "orders_id")
     private Set<OrderRow> orderRowSet;
