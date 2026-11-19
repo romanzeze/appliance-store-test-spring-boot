@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.appliances})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container-fluid py-4">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0" th:text="${deletedView} ? #{title.appliances.deleted} : #{title.appliances}"></h1>
+        <div class="d-flex gap-2" sec:authorize="hasRole('EMPLOYEE')">
+            <a th:if="${!deletedView}" class="btn btn-primary" th:href="@{/appliances/add}" th:text="#{btn.add}"></a>
+            <a th:if="${!deletedView}" class="btn btn-outline-secondary" th:href="@{/appliances/deleted}" th:text="#{btn.show.deleted}"></a>
+            <a th:if="${deletedView}" class="btn btn-outline-secondary" th:href="@{/appliances}" th:text="#{btn.show.active}"></a>
+        </div>
+    </div>
+    <form th:if="${!deletedView}" th:action="@{/appliances}" method="get" class="row g-2 mb-3">
+        <div class="col-md-3"><input class="form-control" type="search" name="query" th:value="${filter.query}" th:placeholder="#{label.search}"/></div>
+        <div class="col-md-2">
+            <select class="form-select" name="category">
+                <option value="" th:text="#{label.category}"></option>
+                <option th:each="c : ${categories}" th:value="${c}" th:text="#{'enum.category.' + ${c}}" th:selected="${c == filter.category}"></option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select" name="manufacturerId">
+                <option value="" th:text="#{label.manufacturer}"></option>
+                <option th:each="m : ${manufacturers}" th:value="${m.id}" th:text="${m.name}" th:selected="${m.id == filter.manufacturerId}"></option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select" name="powerType">
+                <option value="" th:text="#{label.powerType}"></option>
+                <option th:each="p : ${powerTypes}" th:value="${p}" th:text="#{'enum.powerType.' + ${p}}" th:selected="${p == filter.powerType}"></option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary" type="submit" th:text="#{btn.search}"></button>
+            <a class="btn btn-link" th:href="@{/appliances}" th:text="#{btn.reset}"></a>
+        </div>
+    </form>
+    <p class="text-muted" th:if="${items.isEmpty()}" th:text="#{label.empty}"></p>
+    <div class="table-responsive" th:unless="${items.isEmpty()}">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr class="table-dark">
+                <th th:replace="~{fragments/layout :: sortable('id', #{label.id})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('name', #{label.name})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('category', #{label.category})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('model', #{label.model})}"></th>
+                <th th:text="#{label.manufacturer}"></th>
+                <th th:text="#{label.powerType}"></th>
+                <th th:text="#{label.characteristic}"></th>
+                <th th:text="#{label.description}"></th>
+                <th th:replace="~{fragments/layout :: sortable('power', #{label.power})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('price', #{label.price})}"></th>
+                <th th:text="#{label.actions}"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item : ${items}">
+                <td th:text="${item.id}"></td>
+                <td th:text="${item.name}"></td>
+                <td th:text="#{'enum.category.' + ${item.category}}"></td>
+                <td th:text="${item.model}"></td>
+                <td th:text="${item.manufacturerName}"></td>
+                <td th:text="#{'enum.powerType.' + ${item.powerType}}"></td>
+                <td th:text="${item.characteristic}"></td>
+                <td th:text="${item.description}"></td>
+                <td th:text="${item.power}"></td>
+                <td th:text="${#numbers.formatDecimal(item.price, 1, 'COMMA', 2, 'POINT')}"></td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <a th:if="${!deletedView}" class="btn btn-sm btn-success" th:href="@{/orders/new(applianceId=${item.id})}" th:text="#{btn.order}"></a>
+                        <th:block sec:authorize="hasRole('EMPLOYEE')">
+                            <th:block th:if="${!deletedView}">
+                                <a class="btn btn-sm btn-outline-primary" th:href="@{|/appliances/${item.id}/edit|}" th:text="#{btn.edit}"></a>
+                                <form th:action="@{|/appliances/${item.id}/delete|}" method="post" th:attr="data-confirm=#{confirm.delete}">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" th:text="#{btn.delete}"></button>
+                                </form>
+                            </th:block>
+                            <form th:if="${deletedView}" th:action="@{|/appliances/${item.id}/restore|}" method="post">
+                                <button class="btn btn-sm btn-outline-success" type="submit" th:text="#{btn.restore}"></button>
+                            </form>
+                        </th:block>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <nav th:replace="~{fragments/layout :: pager}"></nav>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

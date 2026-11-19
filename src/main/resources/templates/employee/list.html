@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.employees})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0" th:text="${deletedView} ? #{title.employees.deleted} : #{title.employees}"></h1>
+        <div class="d-flex gap-2">
+            <a th:if="${!deletedView}" class="btn btn-primary" th:href="@{/employees/add}" th:text="#{btn.add}"></a>
+            <a th:if="${!deletedView}" class="btn btn-outline-secondary" th:href="@{/employees/deleted}" th:text="#{btn.show.deleted}"></a>
+            <a th:if="${deletedView}" class="btn btn-outline-secondary" th:href="@{/employees}" th:text="#{btn.show.active}"></a>
+        </div>
+    </div>
+    <form th:if="${!deletedView}" th:action="@{/employees}" method="get" class="row g-2 mb-3">
+        <div class="col-auto"><input class="form-control" type="search" name="query" th:value="${query}" th:placeholder="#{label.search}"/></div>
+        <div class="col-auto"><button class="btn btn-outline-primary" type="submit" th:text="#{btn.search}"></button></div>
+    </form>
+    <p class="text-muted" th:if="${items.isEmpty()}" th:text="#{label.empty}"></p>
+    <div class="table-responsive" th:unless="${items.isEmpty()}">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr class="table-dark">
+                <th th:replace="~{fragments/layout :: sortable('id', #{label.id})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('name', #{label.name})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('email', #{label.email})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('department', #{label.department})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('role', #{label.role})}"></th>
+                <th th:text="#{label.status}"></th>
+                <th th:text="#{label.actions}"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item : ${items}">
+                <td th:text="${item.id}"></td>
+                <td th:text="${item.name}"></td>
+                <td th:text="${item.email}"></td>
+                <td th:text="${item.department}"></td>
+                <td th:text="#{'enum.role.' + ${item.role}}"></td>
+                <td>
+                    <span class="badge text-bg-danger" th:if="${item.blocked}" th:text="#{status.blocked}"></span>
+                    <span class="badge text-bg-warning" th:if="${item.mustChangePassword}" th:text="#{status.mustChange}"></span>
+                    <span class="badge text-bg-success" th:if="${!item.blocked and !item.mustChangePassword}" th:text="#{status.active}"></span>
+                </td>
+                <td>
+                    <div class="d-flex gap-1 flex-wrap" th:if="${!deletedView}">
+                        <a class="btn btn-sm btn-outline-primary" th:href="@{|/employees/${item.id}/edit|}" th:text="#{btn.edit}"></a>
+                        <form th:if="${item.id != currentId}" th:action="@{|/employees/${item.id}/role|}" method="post" class="d-flex gap-1">
+                            <select class="form-select form-select-sm" name="role">
+                                <option th:each="r : ${roles}" th:value="${r}" th:text="#{'enum.role.' + ${r}}" th:selected="${r == item.role}"></option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-secondary" type="submit" th:text="#{btn.change.role}"></button>
+                        </form>
+                        <form th:if="${item.id != currentId}" th:action="@{|/employees/${item.id}/reset-password|}" method="post" th:attr="data-confirm=#{confirm.reset}">
+                            <button class="btn btn-sm btn-outline-warning" type="submit" th:text="#{btn.reset.password}"></button>
+                        </form>
+                        <form th:if="${item.id != currentId and !item.blocked}" th:action="@{|/employees/${item.id}/block|}" method="post" th:attr="data-confirm=#{confirm.block}">
+                            <button class="btn btn-sm btn-outline-warning" type="submit" th:text="#{btn.block}"></button>
+                        </form>
+                        <form th:if="${item.id != currentId and item.blocked}" th:action="@{|/employees/${item.id}/unblock|}" method="post">
+                            <button class="btn btn-sm btn-outline-success" type="submit" th:text="#{btn.unblock}"></button>
+                        </form>
+                        <form th:if="${item.id != currentId}" th:action="@{|/employees/${item.id}/delete|}" method="post" th:attr="data-confirm=#{confirm.delete}">
+                            <button class="btn btn-sm btn-outline-danger" type="submit" th:text="#{btn.delete}"></button>
+                        </form>
+                    </div>
+                    <form th:if="${deletedView}" th:action="@{|/employees/${item.id}/restore|}" method="post">
+                        <button class="btn btn-sm btn-outline-success" type="submit" th:text="#{btn.restore}"></button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <nav th:replace="~{fragments/layout :: pager}"></nav>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.manufacturers})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0" th:text="${deletedView} ? #{title.manufacturers.deleted} : #{title.manufacturers}"></h1>
+        <div class="d-flex gap-2">
+            <a th:if="${!deletedView}" class="btn btn-primary" th:href="@{/manufacturers/add}" th:text="#{btn.add}"></a>
+            <a th:if="${!deletedView}" class="btn btn-outline-secondary" th:href="@{/manufacturers/deleted}" th:text="#{btn.show.deleted}"></a>
+            <a th:if="${deletedView}" class="btn btn-outline-secondary" th:href="@{/manufacturers}" th:text="#{btn.show.active}"></a>
+        </div>
+    </div>
+    <form th:if="${!deletedView}" th:action="@{/manufacturers}" method="get" class="row g-2 mb-3">
+        <div class="col-auto"><input class="form-control" type="search" name="query" th:value="${query}" th:placeholder="#{label.search}"/></div>
+        <div class="col-auto"><button class="btn btn-outline-primary" type="submit" th:text="#{btn.search}"></button></div>
+    </form>
+    <p class="text-muted" th:if="${items.isEmpty()}" th:text="#{label.empty}"></p>
+    <table class="table table-hover" th:unless="${items.isEmpty()}">
+        <thead>
+        <tr class="table-dark">
+            <th th:replace="~{fragments/layout :: sortable('id', #{label.id})}"></th>
+            <th th:replace="~{fragments/layout :: sortable('name', #{label.name})}"></th>
+            <th th:text="#{label.actions}"></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="item : ${items}">
+            <td th:text="${item.id}"></td>
+            <td th:text="${item.name}"></td>
+            <td class="d-flex gap-1">
+                <th:block th:if="${!deletedView}">
+                    <a class="btn btn-sm btn-outline-primary" th:href="@{|/manufacturers/${item.id}/edit|}" th:text="#{btn.edit}"></a>
+                    <form th:action="@{|/manufacturers/${item.id}/delete|}" method="post" th:attr="data-confirm=#{confirm.delete}">
+                        <button class="btn btn-sm btn-outline-danger" type="submit" th:text="#{btn.delete}"></button>
+                    </form>
+                </th:block>
+                <form th:if="${deletedView}" th:action="@{|/manufacturers/${item.id}/restore|}" method="post">
+                    <button class="btn btn-sm btn-outline-success" type="submit" th:text="#{btn.restore}"></button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <nav th:replace="~{fragments/layout :: pager}"></nav>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

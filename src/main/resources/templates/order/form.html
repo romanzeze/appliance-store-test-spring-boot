@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.order.form})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4" style="max-width: 800px;">
+    <h1 class="h3 mb-3" th:text="#{title.order.form}"></h1>
+    <form id="order-form" th:action="@{${formAction}}" th:object="${order}" method="post" novalidate>
+        <div th:replace="~{fragments/layout :: globalErrors}"></div>
+        <div class="mb-3" th:if="${staff and creating}">
+            <label class="form-label" for="clientId" th:text="#{label.client}"></label>
+            <select class="form-select" th:field="*{clientId}" th:errorclass="is-invalid">
+                <option value="" th:text="#{label.choose}"></option>
+                <option th:each="c : ${clients}" th:value="${c.id}" th:text="|${c.name} (${c.email})|"></option>
+            </select>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('clientId')}" th:errors="*{clientId}"></div>
+        </div>
+        <div class="text-danger mb-2" th:if="${#fields.hasErrors('rows')}" th:errors="*{rows}"></div>
+        <table class="table align-middle">
+            <thead>
+            <tr>
+                <th th:text="#{label.appliance}"></th>
+                <th style="width: 140px;" th:text="#{label.quantity}"></th>
+                <th style="width: 100px;"></th>
+            </tr>
+            </thead>
+            <tbody id="order-rows">
+            <tr th:each="row, stat : *{rows}">
+                <td>
+                    <select class="form-select" data-field="applianceId" th:name="|rows[${stat.index}].applianceId|"
+                            th:classappend="${#fields.hasErrors('rows[__${stat.index}__].applianceId')} ? 'is-invalid'">
+                        <option value="" th:text="#{label.choose}"></option>
+                        <option th:each="a : ${appliances}" th:value="${a.id}"
+                                th:text="|${a.name} - ${a.model} (${a.price})|"
+                                th:selected="${a.id == row.applianceId}"></option>
+                    </select>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('rows[__${stat.index}__].applianceId')}"
+                         th:errors="*{rows[__${stat.index}__].applianceId}"></div>
+                </td>
+                <td>
+                    <input class="form-control" type="number" min="1" data-field="number"
+                           th:name="|rows[${stat.index}].number|" th:value="${row.number}"
+                           th:classappend="${#fields.hasErrors('rows[__${stat.index}__].number')} ? 'is-invalid'"/>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('rows[__${stat.index}__].number')}"
+                         th:errors="*{rows[__${stat.index}__].number}"></div>
+                </td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger remove-row" th:text="#{btn.remove}"></button></td>
+            </tr>
+            </tbody>
+        </table>
+        <template id="order-row-template">
+            <tr>
+                <td>
+                    <select class="form-select" data-field="applianceId">
+                        <option value="" th:text="#{label.choose}"></option>
+                        <option th:each="a : ${appliances}" th:value="${a.id}" th:text="|${a.name} - ${a.model} (${a.price})|"></option>
+                    </select>
+                </td>
+                <td><input class="form-control" type="number" min="1" value="1" data-field="number"/></td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger remove-row" th:text="#{btn.remove}"></button></td>
+            </tr>
+        </template>
+        <button type="button" id="add-row" class="btn btn-outline-secondary mb-3" th:text="#{btn.add.row}"></button>
+        <div>
+            <button class="btn btn-primary" type="submit" th:text="#{btn.save}"></button>
+            <a class="btn btn-link" th:href="@{/orders}" th:text="#{btn.cancel}"></a>
+        </div>
+    </form>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script th:src="@{/js/order-form.js}"></script>
+</body>
+</html>

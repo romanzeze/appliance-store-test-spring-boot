@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.account})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4" style="max-width: 640px;">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+    <h1 class="h3 mb-3" th:text="#{title.account}"></h1>
+    <th:block th:if="${employee != null}">
+        <dl class="row">
+            <dt class="col-sm-4" th:text="#{label.name}"></dt><dd class="col-sm-8" th:text="${employee.name}"></dd>
+            <dt class="col-sm-4" th:text="#{label.email}"></dt><dd class="col-sm-8" th:text="${employee.email}"></dd>
+            <dt class="col-sm-4" th:text="#{label.department}"></dt><dd class="col-sm-8" th:text="${employee.department}"></dd>
+            <dt class="col-sm-4" th:text="#{label.role}"></dt><dd class="col-sm-8" th:text="#{'enum.role.' + ${employee.role}}"></dd>
+        </dl>
+    </th:block>
+    <form th:if="${client != null}" th:action="@{/account}" th:object="${client}" method="post" novalidate>
+        <div th:replace="~{fragments/layout :: globalErrors}"></div>
+        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: input('email', #{label.email}, 'email')}"></div>
+        <div th:replace="~{fragments/layout :: input('card', #{label.card}, 'text')}"></div>
+        <button class="btn btn-primary" type="submit" th:text="#{btn.save}"></button>
+    </form>
+    <hr>
+    <a class="btn btn-outline-secondary" th:href="@{/password/change}" th:text="#{btn.change.password}"></a>
+    <th:block th:if="${client != null}">
+        <hr>
+        <h2 class="h5" th:text="#{account.danger}"></h2>
+        <p class="text-muted" th:text="#{account.deactivate.hint}"></p>
+        <form th:action="@{/account/deactivate}" method="post" class="mb-3" th:attr="data-confirm=#{confirm.deactivate}">
+            <button class="btn btn-outline-danger" type="submit" th:text="#{btn.deactivate}"></button>
+        </form>
+        <p class="text-muted" th:text="#{account.erase.hint}"></p>
+        <form th:action="@{/account/erase}" method="post" th:attr="data-confirm=#{confirm.erase}">
+            <button class="btn btn-danger" type="submit" th:text="#{btn.erase}"></button>
+        </form>
+    </th:block>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

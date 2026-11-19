@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.appliance.form})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4" style="max-width: 640px;">
+    <h1 class="h3 mb-3" th:text="#{title.appliance.form}"></h1>
+    <form th:action="@{${formAction}}" th:object="${appliance}" method="post" novalidate>
+        <div th:replace="~{fragments/layout :: globalErrors}"></div>
+        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
+        <div class="mb-3">
+            <label class="form-label" for="category" th:text="#{label.category}"></label>
+            <select class="form-select" th:field="*{category}" th:errorclass="is-invalid">
+                <option value="" th:text="#{label.choose}"></option>
+                <option th:each="c : ${categories}" th:value="${c}" th:text="#{'enum.category.' + ${c}}"></option>
+            </select>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('category')}" th:errors="*{category}"></div>
+        </div>
+        <div th:replace="~{fragments/layout :: input('model', #{label.model}, 'text')}"></div>
+        <div class="mb-3">
+            <label class="form-label" for="manufacturerId" th:text="#{label.manufacturer}"></label>
+            <select class="form-select" th:field="*{manufacturerId}" th:errorclass="is-invalid">
+                <option value="" th:text="#{label.choose}"></option>
+                <option th:each="m : ${manufacturers}" th:value="${m.id}" th:text="${m.name}"></option>
+            </select>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('manufacturerId')}" th:errors="*{manufacturerId}"></div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="powerType" th:text="#{label.powerType}"></label>
+            <select class="form-select" th:field="*{powerType}" th:errorclass="is-invalid">
+                <option value="" th:text="#{label.choose}"></option>
+                <option th:each="p : ${powerTypes}" th:value="${p}" th:text="#{'enum.powerType.' + ${p}}"></option>
+            </select>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('powerType')}" th:errors="*{powerType}"></div>
+        </div>
+        <div th:replace="~{fragments/layout :: input('characteristic', #{label.characteristic}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: input('description', #{label.description}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: input('power', #{label.power}, 'number')}"></div>
+        <div th:replace="~{fragments/layout :: input('price', #{label.price}, 'text')}"></div>
+        <button class="btn btn-primary" type="submit" th:text="#{btn.save}"></button>
+        <a class="btn btn-link" th:href="@{/appliances}" th:text="#{btn.cancel}"></a>
+    </form>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

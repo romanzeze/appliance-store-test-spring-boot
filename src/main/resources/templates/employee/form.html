@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.employee.form})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4" style="max-width: 560px;">
+    <h1 class="h3 mb-3" th:text="#{title.employee.form}"></h1>
+    <p class="text-muted" th:if="${creating}" th:text="#{employee.create.hint}"></p>
+    <form th:action="@{${formAction}}" th:object="${employee}" method="post" novalidate>
+        <div th:replace="~{fragments/layout :: globalErrors}"></div>
+        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: input('email', #{label.email}, 'email')}"></div>
+        <div th:replace="~{fragments/layout :: input('department', #{label.department}, 'text')}"></div>
+        <div class="mb-3" th:if="${creating}">
+            <label class="form-label" for="role" th:text="#{label.role}"></label>
+            <select class="form-select" th:field="*{role}" th:errorclass="is-invalid">
+                <option th:each="r : ${roles}" th:value="${r}" th:text="#{'enum.role.' + ${r}}"></option>
+            </select>
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('role')}" th:errors="*{role}"></div>
+        </div>
+        <button class="btn btn-primary" type="submit" th:text="${creating} ? #{btn.create.account} : #{btn.save}"></button>
+        <a class="btn btn-link" th:href="@{/employees}" th:text="#{btn.cancel}"></a>
+    </form>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

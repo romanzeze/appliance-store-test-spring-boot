@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.register})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4" style="max-width: 560px;">
+    <h1 class="h3 mb-3" th:text="#{title.register}"></h1>
+    <form th:action="@{/register}" th:object="${registration}" method="post" novalidate>
+        <div th:replace="~{fragments/layout :: globalErrors}"></div>
+        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: input('email', #{label.email}, 'email')}"></div>
+        <div th:replace="~{fragments/layout :: input('card', #{label.card}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: password('password', #{label.password}, 'new-password')}"></div>
+        <div th:replace="~{fragments/layout :: password('confirmPassword', #{label.password.confirm}, 'new-password')}"></div>
+        <button class="btn btn-primary" type="submit" th:text="#{btn.register}"></button>
+        <a class="btn btn-link" th:href="@{/login}" th:text="#{btn.login}"></a>
+    </form>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.client.form})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4" style="max-width: 560px;">
+    <h1 class="h3 mb-3" th:text="#{title.client.form}"></h1>
+    <form th:action="@{${formAction}}" th:object="${client}" method="post" novalidate>
+        <div th:replace="~{fragments/layout :: globalErrors}"></div>
+        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: input('email', #{label.email}, 'email')}"></div>
+        <div th:replace="~{fragments/layout :: input('card', #{label.card}, 'text')}"></div>
+        <button class="btn btn-primary" type="submit" th:text="#{btn.save}"></button>
+        <a class="btn btn-link" th:href="@{/clients}" th:text="#{btn.cancel}"></a>
+    </form>
+    <th:block sec:authorize="hasRole('ADMIN')" th:if="${client.id != null}">
+        <hr>
+        <p class="text-muted" th:text="#{account.erase.admin.hint}"></p>
+        <form th:action="@{|/clients/${client.id}/erase|}" method="post" th:attr="data-confirm=#{confirm.erase.admin}">
+            <button class="btn btn-danger" type="submit" th:text="#{btn.erase}"></button>
+        </form>
+    </th:block>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

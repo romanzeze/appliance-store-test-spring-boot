@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.login})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4" style="max-width: 480px;">
+    <h1 class="h3 mb-3" th:text="#{title.login}"></h1>
+    <div class="alert alert-danger" th:if="${param.error != null}" th:text="#{login.error}"></div>
+    <div class="alert alert-danger" th:if="${param.blocked != null}" th:text="#{login.blocked}"></div>
+    <div class="alert alert-danger" th:if="${param.expired != null}" th:text="#{login.expired}"></div>
+    <div class="alert alert-danger" th:if="${param.get('expired-password') != null}" th:text="#{login.expiredPassword}"></div>
+    <div class="alert alert-success" th:if="${param.logout != null}" th:text="#{login.loggedOut}"></div>
+    <div class="alert alert-success" th:if="${param.registered != null}" th:text="#{login.registered}"></div>
+    <div class="alert alert-info" th:if="${param.deleted != null}" th:text="#{login.deleted}"></div>
+    <div class="alert alert-info" th:if="${param.erased != null}" th:text="#{login.erased}"></div>
+    <form th:action="@{/login}" method="post">
+        <div class="mb-3">
+            <label class="form-label" for="email" th:text="#{label.email}"></label>
+            <input class="form-control" type="email" id="email" name="email" autocomplete="username" required autofocus/>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="password" th:text="#{label.password}"></label>
+            <input class="form-control" type="password" id="password" name="password" autocomplete="current-password" required/>
+        </div>
+        <button class="btn btn-primary" type="submit" th:text="#{btn.login}"></button>
+        <a class="btn btn-link" th:href="@{/register}" th:text="#{btn.register}"></a>
+    </form>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
