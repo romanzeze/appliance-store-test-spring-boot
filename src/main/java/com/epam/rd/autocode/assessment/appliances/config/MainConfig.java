@@ -18,10 +18,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.util.Set;
 
 @Configuration
 public class MainConfig {
+
+    @Bean
+    public Clock clock() {
+        return Clock.systemDefaultZone();
+    }
 
     @Bean
     public ModelMapper modelMapper() {

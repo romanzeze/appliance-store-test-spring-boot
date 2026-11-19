@@ -12,5 +12,5 @@ public interface ApplianceInOrderRepository extends JpaRepository<OrderRow, Long
     @Query("select r from Orders o join o.orderRowSet r join fetch r.appliance where o.id = :orderId")
     List<OrderRow> findByOrderId(@Param("orderId") Long orderId);
 
-    boolean existsByApplianceIdAndDeletedFalse(Long applianceId);
+    boolean existsByApplianceId(Long applianceId);
 }

@@ -12,6 +12,7 @@ import com.epam.rd.autocode.assessment.appliances.model.Employee;
 import com.epam.rd.autocode.assessment.appliances.model.PowerType;
 import com.epam.rd.autocode.assessment.appliances.repository.ClientRepository;
 import com.epam.rd.autocode.assessment.appliances.repository.EmployeeRepository;
+import com.epam.rd.autocode.assessment.appliances.service.EmailAvailabilityService;
 import jakarta.validation.ConstraintViolation;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +48,8 @@ class DtoValidationTest {
         context = new AnnotationConfigApplicationContext();
         context.registerBean(ClientRepository.class, () -> clientRepository);
         context.registerBean(EmployeeRepository.class, () -> employeeRepository);
+        context.registerBean(EmailAvailabilityService.class,
+                () -> new EmailAvailabilityService(clientRepository, employeeRepository));
         context.refresh();
         validator = new LocalValidatorFactoryBean();
         validator.setApplicationContext(context);

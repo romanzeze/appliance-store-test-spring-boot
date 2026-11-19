@@ -62,8 +62,8 @@ CREATE TABLE order_row (
     orders_id    BIGINT         REFERENCES orders (id),
     appliance_id BIGINT         NOT NULL REFERENCES appliance (id),
     amount       NUMERIC(19, 2) NOT NULL,
-    number       BIGINT         NOT NULL,
-    deleted      BOOLEAN        NOT NULL DEFAULT FALSE
+
+    number       BIGINT         NOT NULL
 );
 CREATE INDEX idx_order_row_orders ON order_row (orders_id);
 

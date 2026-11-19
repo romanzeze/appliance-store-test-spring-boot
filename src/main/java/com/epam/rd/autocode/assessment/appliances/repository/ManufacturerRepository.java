@@ -22,7 +22,7 @@ public interface ManufacturerRepository extends JpaRepository<Manufacturer, Long
 
     Optional<Manufacturer> findByIdAndDeletedFalse(Long id);
 
-    boolean existsByNameIgnoreCaseAndDeletedFalse(String name);
+    Optional<Manufacturer> findByNameIgnoreCaseAndDeletedFalse(String name);
 
     @Query("select m from Manufacturer m where m.deleted = false and lower(m.name) like lower(concat('%', :query, '%'))")
     Page<Manufacturer> search(@Param("query") String query, Pageable pageable);
