@@ -43,15 +43,13 @@ class ClientServiceTest {
     private EmailAvailabilityService emailAvailabilityService;
     @Mock
     private AuditService auditService;
-    @Mock
-    private UserSessionService userSessionService;
 
     private ClientServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new ClientServiceImpl(clientRepository, emailAvailabilityService, ServiceTestSupport.passwordService(),
-                ServiceTestSupport.mapper(), auditService, userSessionService);
+                ServiceTestSupport.mapper(), auditService);
     }
 
     private Client client() {
@@ -148,7 +146,6 @@ class ClientServiceTest {
         service.block(7L, STAFF);
 
         assertTrue(existing.isBlocked());
-        verify(userSessionService).expireSessions(AccountType.CLIENT, 7L);
         verify(auditService).record(STAFF, AuditAction.BLOCKED, "Client", 7L);
     }
 
@@ -178,7 +175,6 @@ class ClientServiceTest {
 
         verify(clientRepository).delete(existing);
         verify(clientRepository, never()).hardDeleteById(any());
-        verify(userSessionService).expireSessions(AccountType.CLIENT, 7L);
         verify(auditService).record(OWNER, AuditAction.ACCOUNT_DEACTIVATED, "Client", 7L);
     }
 
@@ -217,10 +213,9 @@ class ClientServiceTest {
 
         service.eraseAllData(7L, OWNER);
 
-        InOrder order = inOrder(auditService, clientRepository, userSessionService);
+        InOrder order = inOrder(auditService, clientRepository);
         order.verify(auditService).record(OWNER, AuditAction.ACCOUNT_ERASED, "Client", 7L);
         order.verify(clientRepository).hardDeleteById(7L);
-        order.verify(userSessionService).expireSessions(AccountType.CLIENT, 7L);
     }
 
     @Test

@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -78,6 +79,7 @@ public class ApplianceController {
     }
 
     @GetMapping("/deleted")
+    @PreAuthorize("hasRole('ADMIN')")
     public String deleted(PageParams params, Model model) {
         Page<ApplianceDto> page = applianceService.findDeleted(params.toPageable(SORTABLE, "name"));
         ListModel.fill(model, PATH + "/deleted", params, SORTABLE, "name", page, Map.of());
@@ -86,12 +88,14 @@ public class ApplianceController {
         return LIST_VIEW;
     }
     @GetMapping("/add")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String addForm(Model model) {
         model.addAttribute("appliance", new ApplianceDto());
         return form(model, PATH + "/add");
     }
 
     @PostMapping("/add")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String create(@Valid @ModelAttribute("appliance") ApplianceDto dto, BindingResult result,
                          Model model, RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
@@ -107,11 +111,13 @@ public class ApplianceController {
         return "redirect:" + PATH;
     }
     @GetMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String editForm(@PathVariable Long id, Model model) {
         model.addAttribute("appliance", applianceService.findById(id));
         return form(model, PATH + "/" + id + "/edit");
     }
     @PostMapping("/{id}/edit")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String update(@PathVariable Long id, @Valid @ModelAttribute("appliance") ApplianceDto dto,
                          BindingResult result, Model model, RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
@@ -127,12 +133,14 @@ public class ApplianceController {
         return "redirect:" + PATH;
     }
     @PostMapping("/{id}/delete")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         applianceService.delete(id, currentUserService.requireActor());
         FlashMessages.success(redirectAttributes, "msg.deleted");
         return "redirect:" + PATH;
     }
     @PostMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
     public String restore(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         applianceService.restore(id, currentUserService.requireActor());
         FlashMessages.success(redirectAttributes, "msg.restored");

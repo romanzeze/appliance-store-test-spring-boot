@@ -42,15 +42,13 @@ class EmployeeServiceTest {
     private EmailAvailabilityService emailAvailabilityService;
     @Mock
     private AuditService auditService;
-    @Mock
-    private UserSessionService userSessionService;
 
     private EmployeeServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new EmployeeServiceImpl(employeeRepository, emailAvailabilityService, ServiceTestSupport.passwordService(),
-                ServiceTestSupport.mapper(), auditService, userSessionService);
+                ServiceTestSupport.mapper(), auditService);
     }
 
     private Employee employee(Long id, Role role) {
@@ -137,7 +135,6 @@ class EmployeeServiceTest {
         EmployeeDto result = service.changeRole(5L, Role.ADMIN, ADMIN);
 
         assertEquals(Role.ADMIN, result.getRole());
-        verify(userSessionService).expireSessions(AccountType.EMPLOYEE, 5L);
         verify(auditService).record(ADMIN, AuditAction.ROLE_CHANGED, "Employee", 5L);
     }
 
@@ -170,7 +167,6 @@ class EmployeeServiceTest {
 
         assertTrue(ServiceTestSupport.encoder().matches(temporary, existing.getPassword()));
         assertTrue(existing.isMustChangePassword());
-        verify(userSessionService).expireSessions(AccountType.EMPLOYEE, 5L);
         verify(auditService).record(ADMIN, AuditAction.PASSWORD_RESET, "Employee", 5L);
     }
 
@@ -182,7 +178,6 @@ class EmployeeServiceTest {
         service.block(5L, ADMIN);
 
         assertTrue(existing.isBlocked());
-        verify(userSessionService).expireSessions(AccountType.EMPLOYEE, 5L);
         verify(auditService).record(ADMIN, AuditAction.BLOCKED, "Employee", 5L);
     }
 
@@ -214,7 +209,6 @@ class EmployeeServiceTest {
         service.delete(5L, ADMIN);
 
         verify(employeeRepository).delete(existing);
-        verify(userSessionService).expireSessions(AccountType.EMPLOYEE, 5L);
         verify(auditService).record(ADMIN, AuditAction.DELETED, "Employee", 5L);
     }
 

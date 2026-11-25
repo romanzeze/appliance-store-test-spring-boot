@@ -10,8 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -21,7 +20,7 @@ import java.util.Optional;
 public class CurrentUserService {
 
     private final AppUserDetailsService userDetailsService;
-    private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
+    private final JwtService jwtService;
 
     public Optional<AppUserDetails> findCurrent() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -59,6 +58,11 @@ public class CurrentUserService {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(fresh, null, fresh.getAuthorities()));
         SecurityContextHolder.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
+        jwtService.writeCookie(request, response, fresh.getAccountType(), fresh.getId());
+    }
+
+    public void signOut(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
+        new SecurityContextLogoutHandler().logout(request, response, authentication);
+        jwtService.clearCookie(request, response);
     }
 }

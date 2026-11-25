@@ -10,6 +10,7 @@ import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Controller
+@PreAuthorize("hasRole('EMPLOYEE')")
 @RequestMapping("/manufacturers")
 @RequiredArgsConstructor
 public class ManufacturerController {
@@ -55,6 +57,7 @@ public class ManufacturerController {
     }
 
     @GetMapping("/deleted")
+    @PreAuthorize("hasRole('ADMIN')")
     public String deleted(PageParams params, Model model) {
         Page<ManufacturerDto> page = manufacturerService.findDeleted(params.toPageable(SORTABLE, "name"));
         ListModel.fill(model, PATH + "/deleted", params, SORTABLE, "name", page, Map.of());
@@ -120,6 +123,7 @@ public class ManufacturerController {
     }
 
     @PostMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
     public String restore(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         manufacturerService.restore(id, currentUserService.requireActor());
         FlashMessages.success(redirectAttributes, "msg.restored");

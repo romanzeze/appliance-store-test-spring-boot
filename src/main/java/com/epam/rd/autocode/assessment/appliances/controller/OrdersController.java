@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -75,6 +76,7 @@ public class OrdersController {
         return LIST_VIEW;
     }
     @GetMapping("/deleted")
+    @PreAuthorize("hasRole('ADMIN')")
     public String deleted(PageParams params, Model model) {
         Page<OrderDto> page = orderService.findDeleted(params.toPageable(SORTABLE, "id"),
                 currentUserService.requireActor());
@@ -144,6 +146,7 @@ public class OrdersController {
         return "redirect:" + PATH + "/" + id;
     }
     @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('EMPLOYEE')")
     public String approve(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         orderService.approve(id, currentUserService.requireActor());
         FlashMessages.success(redirectAttributes, "msg.order.approved");
@@ -157,6 +160,7 @@ public class OrdersController {
         return "redirect:" + PATH;
     }
     @PostMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
     public String restore(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         orderService.restore(id, currentUserService.requireActor());
         FlashMessages.success(redirectAttributes, "msg.restored");

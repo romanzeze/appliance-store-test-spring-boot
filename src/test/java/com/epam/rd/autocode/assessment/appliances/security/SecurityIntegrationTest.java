@@ -5,17 +5,15 @@ import com.epam.rd.autocode.assessment.appliances.model.Employee;
 import com.epam.rd.autocode.assessment.appliances.model.Role;
 import com.epam.rd.autocode.assessment.appliances.repository.ClientRepository;
 import com.epam.rd.autocode.assessment.appliances.repository.EmployeeRepository;
-import com.epam.rd.autocode.assessment.appliances.service.UserSessionService;
 import com.epam.rd.autocode.assessment.appliances.validation.AccountType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import jakarta.servlet.http.Cookie;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -45,7 +43,9 @@ class SecurityIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
-    private UserSessionService userSessionService;
+    private LoginAttemptService loginAttemptService;
+    @Autowired
+    private JwtService jwtService;
 
     private Client client;
     private Employee employee;
@@ -53,6 +53,8 @@ class SecurityIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        loginAttemptService.reset("magic@sec.test");
+        loginAttemptService.reset("larry@sec.test");
         client = clientRepository.save(new Client(null, "Magic", "magic@sec.test",
                 passwordEncoder.encode(PASSWORD), "1111"));
         employee = new Employee(null, "Larry", "larry@sec.test", passwordEncoder.encode(PASSWORD), "Sales");
@@ -165,43 +167,116 @@ class SecurityIntegrationTest {
         employee.setPasswordExpiresAt(LocalDateTime.now().plusHours(24));
         employeeRepository.save(employee);
 
-        MvcResult login = mockMvc.perform(formLogin("/login").user("email", "larry@sec.test").password(PASSWORD))
-                .andExpect(redirectedUrl("/"))
-                .andReturn();
-        MockHttpSession session = (MockHttpSession) login.getRequest().getSession();
+        Cookie token = loginCookie("larry@sec.test");
 
-        mockMvc.perform(get("/appliances").session(session))
+        mockMvc.perform(get("/appliances").cookie(token))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/password/change"));
-        assertThat(mockMvc.perform(get("/password/change").session(session)).andReturn().getResponse().getStatus())
+        assertThat(mockMvc.perform(get("/password/change").cookie(token)).andReturn().getResponse().getStatus())
                 .isNotEqualTo(302);
     }
 
     @Test
-    void expiringSessionsForcesReLogin() throws Exception {
-        MvcResult login = mockMvc.perform(formLogin("/login").user("email", "magic@sec.test").password(PASSWORD))
-                .andReturn();
-        MockHttpSession session = (MockHttpSession) login.getRequest().getSession();
-        assertThat(mockMvc.perform(get("/appliances").session(session)).andReturn().getResponse().getStatus())
-                .isNotIn(302, 403);
+    void loginIssuesHttpOnlyJwtCookieAndNoSession() throws Exception {
+        var result = mockMvc.perform(formLogin("/login").user("email", "magic@sec.test").password(PASSWORD)).andReturn();
 
-        userSessionService.expireSessions(AccountType.CLIENT, client.getId());
-
-        mockMvc.perform(get("/appliances").session(session))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?expired"));
+        String header = result.getResponse().getHeader("Set-Cookie");
+        assertThat(header).startsWith("AUTH_TOKEN=").contains("HttpOnly").contains("SameSite=Lax");
+        assertThat(result.getRequest().getSession(false)).isNull();
     }
 
     @Test
-    void expiringSessionsOfAnotherAccountKeepsSessionAlive() throws Exception {
-        MvcResult login = mockMvc.perform(formLogin("/login").user("email", "magic@sec.test").password(PASSWORD))
-                .andReturn();
-        MockHttpSession session = (MockHttpSession) login.getRequest().getSession();
+    void tokenAuthenticatesSubsequentRequests() throws Exception {
+        Cookie token = loginCookie("magic@sec.test");
 
-        userSessionService.expireSessions(AccountType.EMPLOYEE, employee.getId());
+        assertThat(mockMvc.perform(get("/orders").cookie(token)).andReturn().getResponse().getStatus()).isEqualTo(200);
+        mockMvc.perform(get("/audit").cookie(token)).andExpect(status().isForbidden());
+    }
 
-        assertThat(mockMvc.perform(get("/appliances").session(session)).andReturn().getResponse().getStatus())
-                .isNotIn(302, 403);
+    @Test
+    void blockingAccountRevokesAccessOnNextRequest() throws Exception {
+        Cookie token = loginCookie("magic@sec.test");
+        client.setBlocked(true);
+        clientRepository.save(client);
+
+        mockMvc.perform(get("/orders").cookie(token))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    void deletedAccountTokenIsRejected() throws Exception {
+        Cookie token = loginCookie("magic@sec.test");
+        clientRepository.delete(client);
+        clientRepository.flush();
+
+        mockMvc.perform(get("/orders").cookie(token))
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    void tamperedOrForeignTokenIsRejected() throws Exception {
+        Cookie token = loginCookie("magic@sec.test");
+        mockMvc.perform(get("/orders").cookie(new Cookie(JwtService.COOKIE_NAME, token.getValue() + "x")))
+                .andExpect(redirectedUrl("http://localhost/login"));
+        mockMvc.perform(get("/orders").cookie(new Cookie(JwtService.COOKIE_NAME, "not-a-jwt")))
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    void tokenOfAnotherAccountDoesNotGrantAdminRights() throws Exception {
+        String clientToken = jwtService.issue(AccountType.CLIENT, client.getId());
+
+        mockMvc.perform(get("/employees").cookie(new Cookie(JwtService.COOKIE_NAME, clientToken)))
+                .andExpect(status().isForbidden());
+        String adminToken = jwtService.issue(AccountType.EMPLOYEE, admin.getId());
+        assertThat(mockMvc.perform(get("/employees").cookie(new Cookie(JwtService.COOKIE_NAME, adminToken)))
+                .andReturn().getResponse().getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    void logoutClearsTokenCookie() throws Exception {
+        String header = mockMvc.perform(post("/logout").with(csrf()).cookie(loginCookie("magic@sec.test")))
+                .andExpect(redirectedUrl("/login?logout"))
+                .andReturn().getResponse().getHeaders("Set-Cookie").toString();
+
+        assertThat(header).contains("AUTH_TOKEN=;");
+    }
+
+    @Test
+    void accountIsLockedAfterRepeatedFailures() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(formLogin("/login").user("email", "magic@sec.test").password("wrong"))
+                    .andExpect(redirectedUrl("/login?error"));
+        }
+
+        mockMvc.perform(formLogin("/login").user("email", "magic@sec.test").password(PASSWORD))
+                .andExpect(redirectedUrl("/login?locked"));
+        mockMvc.perform(formLogin("/login").user("email", "MAGIC@sec.test").password(PASSWORD))
+                .andExpect(redirectedUrl("/login?locked"));
+    }
+
+    @Test
+    void unknownEmailIsLockedTooWithoutRevealingExistence() throws Exception {
+        loginAttemptService.reset("ghost@sec.test");
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(formLogin("/login").user("email", "ghost@sec.test").password("wrong"));
+        }
+
+        mockMvc.perform(formLogin("/login").user("email", "ghost@sec.test").password("wrong"))
+                .andExpect(redirectedUrl("/login?locked"));
+        loginAttemptService.reset("ghost@sec.test");
+    }
+
+    @Test
+    void successfulLoginResetsFailureCounter() throws Exception {
+        for (int i = 0; i < 4; i++) {
+            mockMvc.perform(formLogin("/login").user("email", "magic@sec.test").password("wrong"));
+        }
+        mockMvc.perform(formLogin("/login").user("email", "magic@sec.test").password(PASSWORD))
+                .andExpect(redirectedUrl("/"));
+        mockMvc.perform(formLogin("/login").user("email", "magic@sec.test").password("wrong"))
+                .andExpect(redirectedUrl("/login?error"));
     }
 
     @Test
@@ -214,6 +289,14 @@ class SecurityIntegrationTest {
     void logoutWithCsrfRedirectsToLogin() throws Exception {
         mockMvc.perform(post("/logout").with(csrf()).with(user(new AppUserDetailsFixture().client(client))))
                 .andExpect(redirectedUrl("/login?logout"));
+    }
+
+    private Cookie loginCookie(String email) throws Exception {
+        String header = mockMvc.perform(formLogin("/login").user("email", email).password(PASSWORD))
+                .andExpect(redirectedUrl("/"))
+                .andReturn().getResponse().getHeader("Set-Cookie");
+        String value = header.substring(header.indexOf('=') + 1, header.indexOf(';'));
+        return new Cookie(JwtService.COOKIE_NAME, value);
     }
 
     private int statusFor(String path, Role role, Long id) throws Exception {

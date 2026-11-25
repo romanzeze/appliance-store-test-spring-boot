@@ -15,7 +15,6 @@ import com.epam.rd.autocode.assessment.appliances.service.AuditService;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import com.epam.rd.autocode.assessment.appliances.service.EmailAvailabilityService;
 import com.epam.rd.autocode.assessment.appliances.service.PasswordService;
-import com.epam.rd.autocode.assessment.appliances.service.UserSessionService;
 import com.epam.rd.autocode.assessment.appliances.service.support.AccountStatusFilter;
 import com.epam.rd.autocode.assessment.appliances.service.support.EmailNormalizer;
 import com.epam.rd.autocode.assessment.appliances.validation.AccountType;
@@ -43,7 +42,6 @@ public class ClientServiceImpl implements ClientService {
     private final PasswordService passwordService;
     private final ModelMapper modelMapper;
     private final AuditService auditService;
-    private final UserSessionService userSessionService;
 
     @Override
     @Transactional(readOnly = true)
@@ -113,7 +111,6 @@ public class ClientServiceImpl implements ClientService {
         Client client = activeClient(id);
         client.setBlocked(true);
         clientRepository.save(client);
-        userSessionService.expireSessions(AccountType.CLIENT, id);
         auditService.record(actor, AuditAction.BLOCKED, ENTITY, id);
     }
 
@@ -130,7 +127,6 @@ public class ClientServiceImpl implements ClientService {
     public void deactivate(Long id, Actor actor) {
         requireSelfOrStaff(actor, id);
         clientRepository.delete(activeClient(id));
-        userSessionService.expireSessions(AccountType.CLIENT, id);
         auditService.record(actor, AuditAction.ACCOUNT_DEACTIVATED, ENTITY, id);
     }
 
@@ -156,7 +152,6 @@ public class ClientServiceImpl implements ClientService {
         }
         auditService.record(actor, AuditAction.ACCOUNT_ERASED, ENTITY, id);
         clientRepository.hardDeleteById(id);
-        userSessionService.expireSessions(AccountType.CLIENT, id);
         log.info("All data of client {} erased", id);
     }
 

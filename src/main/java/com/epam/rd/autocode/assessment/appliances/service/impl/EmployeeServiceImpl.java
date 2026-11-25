@@ -16,7 +16,6 @@ import com.epam.rd.autocode.assessment.appliances.service.AuditService;
 import com.epam.rd.autocode.assessment.appliances.service.EmailAvailabilityService;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import com.epam.rd.autocode.assessment.appliances.service.PasswordService;
-import com.epam.rd.autocode.assessment.appliances.service.UserSessionService;
 import com.epam.rd.autocode.assessment.appliances.service.support.AccountStatusFilter;
 import com.epam.rd.autocode.assessment.appliances.service.support.EmailNormalizer;
 import com.epam.rd.autocode.assessment.appliances.validation.AccountType;
@@ -44,7 +43,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final PasswordService passwordService;
     private final ModelMapper modelMapper;
     private final AuditService auditService;
-    private final UserSessionService userSessionService;
 
     @Override
     @Transactional(readOnly = true)
@@ -115,7 +113,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         employee.setRole(role);
         Employee saved = employeeRepository.save(employee);
-        userSessionService.expireSessions(AccountType.EMPLOYEE, id);
         auditService.record(actor, AuditAction.ROLE_CHANGED, ENTITY, id);
         return toDto(saved);
     }
@@ -127,7 +124,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         String temporaryPassword = passwordService.generateTemporaryPassword();
         passwordService.applyTemporaryPassword(employee, temporaryPassword);
         employeeRepository.save(employee);
-        userSessionService.expireSessions(AccountType.EMPLOYEE, id);
         auditService.record(actor, AuditAction.PASSWORD_RESET, ENTITY, id);
         return temporaryPassword;
     }
@@ -151,7 +147,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         assertNotLastAdmin(employee);
         employee.setBlocked(true);
         employeeRepository.save(employee);
-        userSessionService.expireSessions(AccountType.EMPLOYEE, id);
         auditService.record(actor, AuditAction.BLOCKED, ENTITY, id);
     }
 
@@ -171,7 +166,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee employee = activeEmployee(id);
         assertNotLastAdmin(employee);
         employeeRepository.delete(employee);
-        userSessionService.expireSessions(AccountType.EMPLOYEE, id);
         auditService.record(actor, AuditAction.DELETED, ENTITY, id);
     }
 

@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Controller
+@PreAuthorize("hasRole('EMPLOYEE')")
 @RequestMapping("/clients")
 @RequiredArgsConstructor
 public class ClientController {
@@ -88,6 +90,7 @@ public class ClientController {
     }
 
     @GetMapping("/deleted")
+    @PreAuthorize("hasRole('ADMIN')")
     public String deleted(PageParams params, Model model) {
         Page<ClientDto> page = clientService.findDeleted(params.toPageable(SORTABLE, "name"));
         ListModel.fill(model, PATH + "/deleted", params, SORTABLE, "name", page, Map.of());
@@ -143,12 +146,14 @@ public class ClientController {
     }
 
     @PostMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
     public String restore(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         clientService.restore(id, currentUserService.requireActor());
         FlashMessages.success(redirectAttributes, "msg.restored");
         return "redirect:" + PATH + "/deleted";
     }
     @PostMapping("/{id}/erase")
+    @PreAuthorize("hasRole('ADMIN')")
     public String erase(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         clientService.eraseAllData(id, currentUserService.requireActor());
         FlashMessages.success(redirectAttributes, "msg.erased");

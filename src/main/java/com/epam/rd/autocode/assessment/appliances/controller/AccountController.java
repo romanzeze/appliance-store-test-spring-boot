@@ -13,7 +13,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -79,7 +78,7 @@ public class AccountController {
     public String deactivate(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
         CurrentUser current = requireClient();
         clientService.deactivate(current.id(), current.toActor());
-        new SecurityContextLogoutHandler().logout(request, response, authentication);
+        currentUserService.signOut(request, response, authentication);
         return "redirect:/login?deleted";
     }
 
@@ -87,7 +86,7 @@ public class AccountController {
     public String erase(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
         CurrentUser current = requireClient();
         clientService.eraseAllData(current.id(), current.toActor());
-        new SecurityContextLogoutHandler().logout(request, response, authentication);
+        currentUserService.signOut(request, response, authentication);
         return "redirect:/login?erased";
     }
 

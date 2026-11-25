@@ -6,6 +6,7 @@
 <main class="container py-4" style="max-width: 480px;">
     <h1 class="h3 mb-3" th:text="#{title.login}"></h1>
     <div class="alert alert-danger" th:if="${param.error != null}" th:text="#{login.error}"></div>
+    <div class="alert alert-danger" th:if="${param.locked != null}" th:text="#{login.locked}"></div>
     <div class="alert alert-danger" th:if="${param.blocked != null}" th:text="#{login.blocked}"></div>
     <div class="alert alert-danger" th:if="${param.expired != null}" th:text="#{login.expired}"></div>
     <div class="alert alert-danger" th:if="${param.get('expired-password') != null}" th:text="#{login.expiredPassword}"></div>

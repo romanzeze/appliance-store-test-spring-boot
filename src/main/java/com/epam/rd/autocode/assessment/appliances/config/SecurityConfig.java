@@ -1,7 +1,13 @@
 package com.epam.rd.autocode.assessment.appliances.config;
 
 import com.epam.rd.autocode.assessment.appliances.model.Role;
+import com.epam.rd.autocode.assessment.appliances.security.AppUserDetailsService;
 import com.epam.rd.autocode.assessment.appliances.security.AuditLogoutHandler;
+import com.epam.rd.autocode.assessment.appliances.security.JwtAuthenticationFilter;
+import com.epam.rd.autocode.assessment.appliances.security.JwtLoginSuccessHandler;
+import com.epam.rd.autocode.assessment.appliances.security.JwtService;
+import com.epam.rd.autocode.assessment.appliances.security.LoginAttemptFilter;
+import com.epam.rd.autocode.assessment.appliances.security.LoginAttemptService;
 import com.epam.rd.autocode.assessment.appliances.security.LoggingAccessDeniedHandler;
 import com.epam.rd.autocode.assessment.appliances.security.LoginFailureHandler;
 import com.epam.rd.autocode.assessment.appliances.security.PasswordChangeRequiredFilter;
@@ -16,13 +22,13 @@ import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.session.SessionRegistry;
-import org.springframework.security.core.session.SessionRegistryImpl;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
-import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -62,6 +68,10 @@ public class SecurityConfig {
 
     private final LoggingAccessDeniedHandler accessDeniedHandler;
     private final AuditLogoutHandler logoutHandler;
+    private final JwtLoginSuccessHandler loginSuccessHandler;
+    private final JwtService jwtService;
+    private final AppUserDetailsService userDetailsService;
+    private final LoginAttemptService loginAttemptService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -84,17 +94,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SessionRegistry sessionRegistry() {
-        return new SessionRegistryImpl();
-    }
-
-    @Bean
-    public HttpSessionEventPublisher httpSessionEventPublisher() {
-        return new HttpSessionEventPublisher();
-    }
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, SessionRegistry sessionRegistry)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
         http
                 .authorizeHttpRequests(requests -> requests
@@ -108,22 +108,20 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login")
                         .usernameParameter("email")
                         .passwordParameter("password")
-                        .defaultSuccessUrl("/", false)
+                        .successHandler(loginSuccessHandler)
                         .failureHandler(new LoginFailureHandler()))
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .addLogoutHandler(logoutHandler)
                         .logoutSuccessUrl("/login?logout")
                         .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID"))
-                .sessionManagement(session -> session
-                        .sessionFixation(fixation -> fixation.migrateSession())
-                        .sessionConcurrency(concurrency -> concurrency
-                                .maximumSessions(-1)
-                                .sessionRegistry(sessionRegistry)
-                                .expiredUrl("/login?expired")))
+                        .deleteCookies("JSESSIONID", JwtService.COOKIE_NAME))
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions.accessDeniedHandler(accessDeniedHandler))
-                .addFilterBefore(new PasswordChangeRequiredFilter(), AuthorizationFilter.class);
+                .addFilterBefore(new PasswordChangeRequiredFilter(), AuthorizationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, userDetailsService), PasswordChangeRequiredFilter.class)
+                .addFilterBefore(new LoginAttemptFilter(loginAttemptService), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }
