@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(${item.displayName(#locale.language)})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+    <a class="btn btn-link ps-0 mb-3" th:href="@{/appliances}" th:text="#{btn.back.catalog}"></a>
+    <div class="row g-4">
+        <div class="col-md-5">
+            <div class="product-card">
+                <div class="product-thumb product-thumb-large">
+                    <svg width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M9 7h6M9 12h6"></path></svg>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <span class="product-meta" th:text="#{'enum.category.' + ${item.category}} + ' · ' + #{'enum.powerType.' + ${item.powerType}}"></span>
+            <h1 class="mb-2" th:text="${item.displayName(#locale.language)}"></h1>
+            <p class="text-muted" th:text="${item.manufacturerName} + ' · ' + ${item.model}"></p>
+            <p class="lead" th:text="${item.displayCharacteristic(#locale.language)}"></p>
+            <p th:text="${item.displayDescription(#locale.language)}"></p>
+            <dl class="row">
+                <dt class="col-sm-4" th:text="#{label.power}"></dt>
+                <dd class="col-sm-8" th:text="${item.power} + ' W'"></dd>
+                <dt class="col-sm-4" th:text="#{label.manufacturer}"></dt>
+                <dd class="col-sm-8" th:text="${item.manufacturerName}"></dd>
+                <dt class="col-sm-4" th:text="#{label.model}"></dt>
+                <dd class="col-sm-8" th:text="${item.model}"></dd>
+            </dl>
+            <div class="product-price mb-3" th:text="${#numbers.formatDecimal(item.price, 1, 'COMMA', 2, 'POINT')}"></div>
+            <div class="d-flex flex-wrap gap-2">
+                <form sec:authorize="isAuthenticated()" th:action="@{/cart/add}" method="post">
+                    <input type="hidden" name="applianceId" th:value="${item.id}"/>
+                    <input type="hidden" name="next" th:value="${currentPath}"/>
+                    <button class="btn btn-primary" type="submit" th:text="#{btn.cart.add}"></button>
+                </form>
+                <a sec:authorize="!isAuthenticated()" class="btn btn-primary" th:href="@{/login}" th:text="#{btn.cart.add}"></a>
+                <a sec:authorize="hasRole('EMPLOYEE')" class="btn btn-outline-primary" th:href="@{|/appliances/${item.id}/edit|}" th:text="#{btn.edit}"></a>
+            </div>
+        </div>
+    </div>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

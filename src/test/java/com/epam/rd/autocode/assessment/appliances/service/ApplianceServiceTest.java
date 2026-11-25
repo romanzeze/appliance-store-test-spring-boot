@@ -9,6 +9,7 @@ import com.epam.rd.autocode.assessment.appliances.model.Manufacturer;
 import com.epam.rd.autocode.assessment.appliances.model.PowerType;
 import com.epam.rd.autocode.assessment.appliances.model.Role;
 import com.epam.rd.autocode.assessment.appliances.repository.ApplianceRepository;
+import com.epam.rd.autocode.assessment.appliances.repository.ApplianceTranslationRepository;
 import com.epam.rd.autocode.assessment.appliances.repository.ManufacturerRepository;
 import com.epam.rd.autocode.assessment.appliances.service.impl.ApplianceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +39,8 @@ class ApplianceServiceTest {
     @Mock
     private ManufacturerRepository manufacturerRepository;
     @Mock
+    private ApplianceTranslationRepository translationRepository;
+    @Mock
     private AuditService auditService;
 
     private ApplianceServiceImpl service;
@@ -45,7 +48,7 @@ class ApplianceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ApplianceServiceImpl(applianceRepository, manufacturerRepository,
+        service = new ApplianceServiceImpl(applianceRepository, manufacturerRepository, translationRepository,
                 ServiceTestSupport.mapper(), auditService);
         bosch = new Manufacturer(3L, "Bosch");
     }
@@ -146,5 +149,40 @@ class ApplianceServiceTest {
         assertThrows(AccessDeniedException.class, () -> service.create(dto(3L), client));
         assertThrows(AccessDeniedException.class, () -> service.update(10L, dto(3L), client));
         assertThrows(AccessDeniedException.class, () -> service.delete(10L, client));
+    }
+
+    @Test
+    void createStoresUkrainianTranslation() {
+        when(manufacturerRepository.findByIdAndDeletedFalse(3L)).thenReturn(java.util.Optional.of(bosch));
+        when(applianceRepository.save(any(Appliance.class))).thenAnswer(invocation -> {
+            Appliance saved = invocation.getArgument(0);
+            saved.setId(11L);
+            return saved;
+        });
+        ApplianceDto request = dto(3L);
+        request.setNameUk("Пральна машина");
+        ApplianceDto created = service.create(request, STAFF);
+        org.mockito.ArgumentCaptor<com.epam.rd.autocode.assessment.appliances.model.ApplianceTranslation> captor =
+                org.mockito.ArgumentCaptor.forClass(com.epam.rd.autocode.assessment.appliances.model.ApplianceTranslation.class);
+        verify(translationRepository).save(captor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("Пральна машина", captor.getValue().getName());
+        org.junit.jupiter.api.Assertions.assertEquals(11L, captor.getValue().getApplianceId());
+        org.junit.jupiter.api.Assertions.assertEquals("Пральна машина", created.displayName("uk"));
+        org.junit.jupiter.api.Assertions.assertEquals("Washer", created.displayName("en"));
+    }
+
+    @Test
+    void createWithoutTranslationDoesNotStoreOne() {
+        when(manufacturerRepository.findByIdAndDeletedFalse(3L)).thenReturn(java.util.Optional.of(bosch));
+        when(applianceRepository.save(any(Appliance.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        service.create(dto(3L), STAFF);
+        verify(translationRepository, never()).save(any());
+    }
+
+    @Test
+    void displayFallsBackToDefaultWhenTranslationIsMissing() {
+        ApplianceDto dto = dto(3L);
+        org.junit.jupiter.api.Assertions.assertEquals("Washer", dto.displayName("uk"));
+        org.junit.jupiter.api.Assertions.assertNull(dto.displayDescription("uk"));
     }
 }

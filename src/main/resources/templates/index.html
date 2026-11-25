@@ -3,17 +3,74 @@
 <head th:replace="~{fragments/layout :: head(#{shop.name})}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
-<main class="container py-4">
-    <div th:replace="~{fragments/layout :: flash}"></div>
-    <h1 th:text="#{index.welcome}"></h1>
-    <p class="lead" th:text="#{index.lead}"></p>
-    <div sec:authorize="!isAuthenticated()" class="d-flex gap-2">
-        <a class="btn btn-primary" th:href="@{/login}" th:text="#{btn.login}"></a>
-        <a class="btn btn-outline-primary" th:href="@{/register}" th:text="#{btn.register}"></a>
+<section class="hero">
+    <div class="container">
+        <div th:replace="~{fragments/layout :: flash}"></div>
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="hero-badge" th:text="#{index.badge}"></span>
+                <h1 class="hero-title" th:text="#{index.welcome}"></h1>
+                <p class="hero-lead" th:text="#{index.lead}"></p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a class="btn btn-primary btn-lg px-4" th:href="@{/appliances}" th:text="#{index.cta.catalog}"></a>
+                    <a sec:authorize="!isAuthenticated()" class="btn btn-outline-secondary btn-lg px-4"
+                       th:href="@{/register}" th:text="#{btn.register}"></a>
+                    <a sec:authorize="isAuthenticated()" class="btn btn-outline-secondary btn-lg px-4"
+                       th:href="@{/orders}" th:text="#{nav.orders}"></a>
+                </div>
+                <p class="mt-4 mb-0" sec:authorize="!isAuthenticated()">
+                    <a th:href="@{/login}" th:text="#{index.haveAccount}"></a>
+                </p>
+            </div>
+            <div class="col-lg-6">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <a class="tile h-100" th:href="@{/appliances(category='BIG')}">
+                            <span class="tile-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M9 7h6M9 12h6"></path></svg>
+                            </span>
+                            <span class="tile-title" th:text="#{index.category.BIG}"></span>
+                            <span class="text-muted small" th:text="#{index.category.BIG.hint}"></span>
+                        </a>
+                    </div>
+                    <div class="col-sm-6">
+                        <a class="tile h-100" th:href="@{/appliances(category='SMALL')}">
+                            <span class="tile-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="2"></rect><path d="M8 8V5h8v3"></path></svg>
+                            </span>
+                            <span class="tile-title" th:text="#{index.category.SMALL}"></span>
+                            <span class="text-muted small" th:text="#{index.category.SMALL.hint}"></span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div sec:authorize="isAuthenticated()" class="d-flex gap-2">
-        <a class="btn btn-primary" th:href="@{/appliances}" th:text="#{nav.appliances}"></a>
-        <a class="btn btn-outline-primary" th:href="@{/orders}" th:text="#{nav.orders}"></a>
+</section>
+<main class="container py-5">
+    <h2 class="mb-4" th:text="#{index.how}"></h2>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3 class="h5" th:text="#{index.feature1.title}"></h3>
+                <p class="text-muted mb-0" th:text="#{index.feature1.text}"></p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3 class="h5" th:text="#{index.feature2.title}"></h3>
+                <p class="text-muted mb-0" th:text="#{index.feature2.text}"></p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3 class="h5" th:text="#{index.feature3.title}"></h3>
+                <p class="text-muted mb-0" th:text="#{index.feature3.text}"></p>
+            </div>
+        </div>
     </div>
 </main>
 <footer th:replace="~{fragments/layout :: footer}"></footer>

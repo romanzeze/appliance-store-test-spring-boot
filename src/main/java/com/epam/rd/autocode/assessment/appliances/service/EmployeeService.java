@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface EmployeeService {
 
-    Page<EmployeeDto> findAll(String query, Pageable pageable);
+    Page<EmployeeDto> findAll(String query, String status, Pageable pageable);
 
     Page<EmployeeDto> findDeleted(Pageable pageable);
 

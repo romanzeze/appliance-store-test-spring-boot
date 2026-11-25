@@ -6,10 +6,13 @@ import com.epam.rd.autocode.assessment.appliances.controller.support.PageParams;
 import com.epam.rd.autocode.assessment.appliances.dto.user.ClientDto;
 import com.epam.rd.autocode.assessment.appliances.exception.BusinessException;
 import com.epam.rd.autocode.assessment.appliances.security.CurrentUserService;
+import com.epam.rd.autocode.assessment.appliances.service.support.AccountStatusFilter;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -19,9 +22,12 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,7 +39,8 @@ public class ClientController {
     private static final String PATH = "/clients";
     private static final String LIST_VIEW = "client/list";
     private static final String FORM_VIEW = "client/form";
-    private static final Set<String> SORTABLE = Set.of("id", "name", "email");
+    private static final int SEARCH_PAGE_SIZE = 4;
+    private static final Set<String> SORTABLE = Set.of("id", "name", "email", "status");
 
     private final ClientService clientService;
     private final CurrentUserService currentUserService;
@@ -50,13 +57,34 @@ public class ClientController {
 
     @GetMapping
     public String list(PageParams params, Model model) {
-        Page<ClientDto> page = clientService.findAll(params.getQuery(), params.toPageable(SORTABLE, "name"));
+        Page<ClientDto> page = clientService.findAll(params.getQuery(), params.getStatus(), params.toPageable(SORTABLE, "name"));
         String query = params.getQuery() == null ? "" : params.getQuery();
-        ListModel.fill(model, PATH, params, SORTABLE, "name", page, Map.of("query", query));
+        ListModel.fill(model, PATH, params, SORTABLE, "name", page,
+                Map.of("query", query, "status", AccountStatusFilter.normalize(params.getStatus())));
         model.addAttribute("items", page.getContent());
         model.addAttribute("query", query);
+        model.addAttribute("statuses", AccountStatusFilter.VALUES);
+        model.addAttribute("status", AccountStatusFilter.normalize(params.getStatus()));
         model.addAttribute("deletedView", false);
         return LIST_VIEW;
+    }
+
+    @GetMapping("/search")
+    @ResponseBody
+    public ClientSearchResult search(@RequestParam(defaultValue = "") String query,
+                                     @RequestParam(defaultValue = "0") int page) {
+        Page<ClientDto> result = clientService.findAll(query, null,
+                PageRequest.of(Math.max(page, 0), SEARCH_PAGE_SIZE, Sort.by("name")));
+        List<ClientOption> items = result.getContent().stream()
+                .map(client -> new ClientOption(client.getId(), client.getName(), client.getEmail()))
+                .toList();
+        return new ClientSearchResult(items, result.getNumber(), result.getTotalPages());
+    }
+
+    public record ClientOption(Long id, String name, String email) {
+    }
+
+    public record ClientSearchResult(List<ClientOption> items, int page, int totalPages) {
     }
 
     @GetMapping("/deleted")

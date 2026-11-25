@@ -1,5 +1,6 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
+import com.epam.rd.autocode.assessment.appliances.aspect.Loggable;
 import com.epam.rd.autocode.assessment.appliances.dto.order.OrderDto;
 import com.epam.rd.autocode.assessment.appliances.dto.order.OrderRowDto;
 import com.epam.rd.autocode.assessment.appliances.exception.OperationNotAllowedException;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
+@Loggable
 @Service
 @Transactional
 @RequiredArgsConstructor

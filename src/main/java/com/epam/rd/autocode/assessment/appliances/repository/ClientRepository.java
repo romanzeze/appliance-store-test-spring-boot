@@ -26,6 +26,11 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
             + "(lower(c.name) like lower(concat('%', :query, '%')) or lower(c.email) like lower(concat('%', :query, '%')))")
     Page<Client> search(@Param("query") String query, Pageable pageable);
 
+    @Query("select c from Client c where c.deleted = false and "
+            + "(lower(c.name) like lower(concat('%', :query, '%')) or lower(c.email) like lower(concat('%', :query, '%'))) and "
+            + "(:status = '' or (:status = 'BLOCKED' and c.blocked = true) or (:status = 'MUST_CHANGE' and c.blocked = false and c.mustChangePassword = true) or (:status = 'ACTIVE' and c.blocked = false and c.mustChangePassword = false))")
+    Page<Client> filter(@Param("query") String query, @Param("status") String status, Pageable pageable);
+
     @Modifying(clearAutomatically = true)
     @Query("update Client c set c.deleted = false where c.id = :id")
     int restore(@Param("id") Long id);

@@ -8,6 +8,7 @@ import com.epam.rd.autocode.assessment.appliances.dto.employee.EmployeeDto;
 import com.epam.rd.autocode.assessment.appliances.exception.BusinessException;
 import com.epam.rd.autocode.assessment.appliances.model.Role;
 import com.epam.rd.autocode.assessment.appliances.security.CurrentUserService;
+import com.epam.rd.autocode.assessment.appliances.service.support.AccountStatusFilter;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ public class EmployeeController {
     private static final String LIST_VIEW = "employee/list";
     private static final String FORM_VIEW = "employee/form";
     private static final String CREDENTIALS_VIEW = "employee/credentials";
-    private static final Set<String> SORTABLE = Set.of("id", "name", "email", "department", "role");
+    private static final Set<String> SORTABLE = Set.of("id", "name", "email", "department", "role", "status");
     private static final List<Role> STAFF_ROLES = List.of(Role.EMPLOYEE, Role.ADMIN);
 
     private final EmployeeService employeeService;
@@ -56,11 +57,14 @@ public class EmployeeController {
 
     @GetMapping
     public String list(PageParams params, Model model) {
-        Page<EmployeeDto> page = employeeService.findAll(params.getQuery(), params.toPageable(SORTABLE, "name"));
+        Page<EmployeeDto> page = employeeService.findAll(params.getQuery(), params.getStatus(), params.toPageable(SORTABLE, "name"));
         String query = params.getQuery() == null ? "" : params.getQuery();
-        ListModel.fill(model, PATH, params, SORTABLE, "name", page, Map.of("query", query));
+        ListModel.fill(model, PATH, params, SORTABLE, "name", page,
+                Map.of("query", query, "status", AccountStatusFilter.normalize(params.getStatus())));
         model.addAttribute("items", page.getContent());
         model.addAttribute("query", query);
+        model.addAttribute("statuses", AccountStatusFilter.VALUES);
+        model.addAttribute("status", AccountStatusFilter.normalize(params.getStatus()));
         model.addAttribute("roles", STAFF_ROLES);
         model.addAttribute("currentId", currentUserService.requireCurrent().getId());
         model.addAttribute("deletedView", false);

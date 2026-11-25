@@ -3,11 +3,10 @@ package com.epam.rd.autocode.assessment.appliances.controller;
 import com.epam.rd.autocode.assessment.appliances.controller.support.FlashMessages;
 import com.epam.rd.autocode.assessment.appliances.dto.user.ChangePasswordDto;
 import com.epam.rd.autocode.assessment.appliances.exception.BusinessException;
-import com.epam.rd.autocode.assessment.appliances.security.AppUserDetails;
+import com.epam.rd.autocode.assessment.appliances.service.CurrentUser;
 import com.epam.rd.autocode.assessment.appliances.security.CurrentUserService;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
-import com.epam.rd.autocode.assessment.appliances.validation.AccountType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -35,7 +34,7 @@ public class PasswordController {
     @GetMapping
     public String form(Model model) {
         model.addAttribute("passwordForm", new ChangePasswordDto());
-        model.addAttribute("forced", currentUserService.requireCurrent().isMustChangePassword());
+        model.addAttribute("forced", currentUserService.requireUser().mustChangePassword());
         return VIEW;
     }
 
@@ -43,16 +42,16 @@ public class PasswordController {
     public String change(@Valid @ModelAttribute("passwordForm") ChangePasswordDto dto, BindingResult result,
                          Model model, HttpServletRequest request, HttpServletResponse response,
                          RedirectAttributes redirectAttributes) {
-        AppUserDetails current = currentUserService.requireCurrent();
-        model.addAttribute("forced", current.isMustChangePassword());
+        CurrentUser current = currentUserService.requireUser();
+        model.addAttribute("forced", current.mustChangePassword());
         if (result.hasErrors()) {
             return VIEW;
         }
         try {
-            if (current.getAccountType() == AccountType.CLIENT) {
-                clientService.changePassword(current.getId(), dto, current.toActor());
+            if (current.isClient()) {
+                clientService.changePassword(current.id(), dto, current.toActor());
             } else {
-                employeeService.changePassword(current.getId(), dto, current.toActor());
+                employeeService.changePassword(current.id(), dto, current.toActor());
             }
         } catch (BusinessException exception) {
             result.rejectValue(fieldFor(exception), exception.getMessageKey(), exception.getMessageKey());

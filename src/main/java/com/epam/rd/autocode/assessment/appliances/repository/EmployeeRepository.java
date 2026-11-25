@@ -31,6 +31,13 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             + "or lower(e.department) like lower(concat('%', :query, '%')))")
     Page<Employee> search(@Param("query") String query, Pageable pageable);
 
+    @Query("select e from Employee e where e.deleted = false and "
+            + "(lower(e.name) like lower(concat('%', :query, '%')) "
+            + "or lower(e.email) like lower(concat('%', :query, '%')) "
+            + "or lower(e.department) like lower(concat('%', :query, '%'))) and "
+            + "(:status = '' or (:status = 'BLOCKED' and e.blocked = true) or (:status = 'MUST_CHANGE' and e.blocked = false and e.mustChangePassword = true) or (:status = 'ACTIVE' and e.blocked = false and e.mustChangePassword = false))")
+    Page<Employee> filter(@Param("query") String query, @Param("status") String status, Pageable pageable);
+
     @Modifying(clearAutomatically = true)
     @Query("update Employee e set e.deleted = false where e.id = :id")
     int restore(@Param("id") Long id);

@@ -41,8 +41,30 @@ public class ApplianceDto {
     @NotNull(message = "{validation.required}")
     @Positive(message = "{validation.positive}")
     private Integer power;
+    @Size(max = 255, message = "{validation.max.length}")
+    private String nameUk;
+    @Size(max = 255, message = "{validation.max.length}")
+    private String characteristicUk;
+    @Size(max = 1000, message = "{validation.max.length}")
+    private String descriptionUk;
     @NotNull(message = "{validation.required}")
     @DecimalMin(value = "0.01", message = "{validation.positive}")
     @Digits(integer = 17, fraction = 2, message = "{validation.price.format}")
     private BigDecimal price;
+
+    public String displayName(String language) {
+        return pick(language, nameUk, name);
+    }
+
+    public String displayCharacteristic(String language) {
+        return pick(language, characteristicUk, characteristic);
+    }
+
+    public String displayDescription(String language) {
+        return pick(language, descriptionUk, description);
+    }
+
+    private static String pick(String language, String ukrainian, String fallback) {
+        return "uk".equals(language) && ukrainian != null && !ukrainian.isBlank() ? ukrainian : fallback;
+    }
 }

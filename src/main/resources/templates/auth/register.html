@@ -7,11 +7,11 @@
     <h1 class="h3 mb-3" th:text="#{title.register}"></h1>
     <form th:action="@{/register}" th:object="${registration}" method="post" novalidate>
         <div th:replace="~{fragments/layout :: globalErrors}"></div>
-        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
-        <div th:replace="~{fragments/layout :: input('email', #{label.email}, 'email')}"></div>
-        <div th:replace="~{fragments/layout :: input('card', #{label.card}, 'text')}"></div>
-        <div th:replace="~{fragments/layout :: password('password', #{label.password}, 'new-password')}"></div>
-        <div th:replace="~{fragments/layout :: password('confirmPassword', #{label.password.confirm}, 'new-password')}"></div>
+        <div th:replace="~{fragments/layout :: textField('name', #{label.name}, 'text', true)}"></div>
+        <div th:replace="~{fragments/layout :: textField('email', #{label.email}, 'email', true)}"></div>
+        <div th:replace="~{fragments/layout :: textField('card', #{label.card}, 'text', true)}"></div>
+        <div th:replace="~{fragments/layout :: password('password', #{label.password}, 'new-password', true)}"></div>
+        <div th:replace="~{fragments/layout :: password('confirmPassword', #{label.password.confirm}, 'new-password', true)}"></div>
         <button class="btn btn-primary" type="submit" th:text="#{btn.register}"></button>
         <a class="btn btn-link" th:href="@{/login}" th:text="#{btn.login}"></a>
     </form>

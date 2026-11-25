@@ -1,5 +1,6 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
+import com.epam.rd.autocode.assessment.appliances.aspect.Loggable;
 import com.epam.rd.autocode.assessment.appliances.dto.manufacturer.ManufacturerDto;
 import com.epam.rd.autocode.assessment.appliances.exception.OperationNotAllowedException;
 import com.epam.rd.autocode.assessment.appliances.exception.ResourceNotFoundException;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Slf4j
+@Loggable
 @Service
 @Transactional
 @RequiredArgsConstructor

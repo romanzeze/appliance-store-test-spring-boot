@@ -7,7 +7,7 @@
     <h1 class="h3 mb-3" th:text="#{title.manufacturer.form}"></h1>
     <form th:action="@{${formAction}}" th:object="${manufacturer}" method="post" novalidate>
         <div th:replace="~{fragments/layout :: globalErrors}"></div>
-        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: textField('name', #{label.name}, 'text', true)}"></div>
         <button class="btn btn-primary" type="submit" th:text="#{btn.save}"></button>
         <a class="btn btn-link" th:href="@{/manufacturers}" th:text="#{btn.cancel}"></a>
     </form>

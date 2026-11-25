@@ -3,11 +3,10 @@ package com.epam.rd.autocode.assessment.appliances.controller;
 import com.epam.rd.autocode.assessment.appliances.controller.support.FlashMessages;
 import com.epam.rd.autocode.assessment.appliances.dto.user.ClientDto;
 import com.epam.rd.autocode.assessment.appliances.exception.BusinessException;
-import com.epam.rd.autocode.assessment.appliances.security.AppUserDetails;
 import com.epam.rd.autocode.assessment.appliances.security.CurrentUserService;
 import com.epam.rd.autocode.assessment.appliances.service.ClientService;
+import com.epam.rd.autocode.assessment.appliances.service.CurrentUser;
 import com.epam.rd.autocode.assessment.appliances.service.EmployeeService;
-import com.epam.rd.autocode.assessment.appliances.validation.AccountType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -44,15 +43,15 @@ public class AccountController {
 
     @ModelAttribute("client")
     ClientDto client() {
-        AppUserDetails current = currentUserService.requireCurrent();
-        return current.getAccountType() == AccountType.CLIENT ? clientService.findById(current.getId()) : null;
+        CurrentUser current = currentUserService.requireUser();
+        return current.isClient() ? clientService.findById(current.id()) : null;
     }
 
     @GetMapping
     public String profile(Model model) {
-        AppUserDetails current = currentUserService.requireCurrent();
-        if (current.getAccountType() == AccountType.EMPLOYEE) {
-            model.addAttribute("employee", employeeService.findById(current.getId()));
+        CurrentUser current = currentUserService.requireUser();
+        if (current.isStaff()) {
+            model.addAttribute("employee", employeeService.findById(current.id()));
         }
         return VIEW;
     }
@@ -61,12 +60,12 @@ public class AccountController {
     public String update(@Valid @ModelAttribute("client") ClientDto dto, BindingResult result,
                          HttpServletRequest request, HttpServletResponse response,
                          RedirectAttributes redirectAttributes) {
-        AppUserDetails current = requireClient();
+        CurrentUser current = requireClient();
         if (result.hasErrors()) {
             return VIEW;
         }
         try {
-            clientService.update(current.getId(), dto, current.toActor());
+            clientService.update(current.id(), dto, current.toActor());
         } catch (BusinessException exception) {
             result.reject(exception.getMessageKey(), exception.getArgs(), exception.getMessageKey());
             return VIEW;
@@ -78,23 +77,23 @@ public class AccountController {
 
     @PostMapping("/deactivate")
     public String deactivate(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
-        AppUserDetails current = requireClient();
-        clientService.deactivate(current.getId(), current.toActor());
+        CurrentUser current = requireClient();
+        clientService.deactivate(current.id(), current.toActor());
         new SecurityContextLogoutHandler().logout(request, response, authentication);
         return "redirect:/login?deleted";
     }
 
     @PostMapping("/erase")
     public String erase(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
-        AppUserDetails current = requireClient();
-        clientService.eraseAllData(current.getId(), current.toActor());
+        CurrentUser current = requireClient();
+        clientService.eraseAllData(current.id(), current.toActor());
         new SecurityContextLogoutHandler().logout(request, response, authentication);
         return "redirect:/login?erased";
     }
 
-    private AppUserDetails requireClient() {
-        AppUserDetails current = currentUserService.requireCurrent();
-        if (current.getAccountType() != AccountType.CLIENT) {
+    private CurrentUser requireClient() {
+        CurrentUser current = currentUserService.requireUser();
+        if (!current.isClient()) {
             throw new AccessDeniedException("Only clients can manage their own profile here");
         }
         return current;

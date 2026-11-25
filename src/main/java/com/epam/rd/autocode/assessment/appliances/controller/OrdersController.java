@@ -1,10 +1,12 @@
 package com.epam.rd.autocode.assessment.appliances.controller;
 
+import com.epam.rd.autocode.assessment.appliances.controller.support.Cart;
 import com.epam.rd.autocode.assessment.appliances.controller.support.FlashMessages;
 import com.epam.rd.autocode.assessment.appliances.controller.support.ListModel;
 import com.epam.rd.autocode.assessment.appliances.controller.support.PageParams;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.ApplianceFilterDto;
 import com.epam.rd.autocode.assessment.appliances.dto.order.OrderDto;
+import com.epam.rd.autocode.assessment.appliances.dto.user.ClientDto;
 import com.epam.rd.autocode.assessment.appliances.dto.order.OrderRowDto;
 import com.epam.rd.autocode.assessment.appliances.exception.BusinessException;
 import com.epam.rd.autocode.assessment.appliances.security.CurrentUserService;
@@ -50,6 +52,7 @@ public class OrdersController {
     private final ApplianceService applianceService;
     private final ClientService clientService;
     private final CurrentUserService currentUserService;
+    private final Cart cart;
 
     @InitBinder("order")
     void initBinder(WebDataBinder binder) {
@@ -85,7 +88,13 @@ public class OrdersController {
     @GetMapping("/new")
     public String newForm(@RequestParam(required = false) Long applianceId, Model model) {
         OrderDto order = new OrderDto();
-        order.getRows().add(OrderRowDto.builder().applianceId(applianceId).number(1L).build());
+        order.getRows().addAll(cart.rows());
+        if (applianceId != null && order.getRows().stream().noneMatch(row -> applianceId.equals(row.getApplianceId()))) {
+            order.getRows().add(OrderRowDto.builder().applianceId(applianceId).number(1L).build());
+        }
+        if (order.getRows().isEmpty()) {
+            order.getRows().add(OrderRowDto.builder().number(1L).build());
+        }
         model.addAttribute("order", order);
         return form(model, PATH + "/new", true);
     }
@@ -98,6 +107,7 @@ public class OrdersController {
         }
         try {
             OrderDto created = orderService.create(dto, currentUserService.requireActor());
+            cart.clear();
             FlashMessages.success(redirectAttributes, "msg.order.created");
             return "redirect:" + PATH + "/" + created.getId();
         } catch (BusinessException exception) {
@@ -161,9 +171,18 @@ public class OrdersController {
         model.addAttribute("appliances", applianceService
                 .search(new ApplianceFilterDto(), PageRequest.of(0, PICKER_SIZE, Sort.by("name"))).getContent());
         if (actor.isStaff() && creating) {
-            model.addAttribute("clients", clientService
-                    .findAll(null, PageRequest.of(0, PICKER_SIZE, Sort.by("name"))).getContent());
+            Object order = model.getAttribute("order");
+            Long clientId = order instanceof OrderDto dto ? dto.getClientId() : null;
+            model.addAttribute("selectedClient", clientId == null ? null : findClient(clientId));
         }
         return FORM_VIEW;
+    }
+
+    private ClientDto findClient(Long id) {
+        try {
+            return clientService.findById(id);
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 }

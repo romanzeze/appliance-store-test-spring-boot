@@ -1,6 +1,7 @@
 package com.epam.rd.autocode.assessment.appliances.security;
 
 import com.epam.rd.autocode.assessment.appliances.service.Actor;
+import com.epam.rd.autocode.assessment.appliances.service.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,19 @@ public class CurrentUserService {
 
     public AppUserDetails requireCurrent() {
         return findCurrent().orElseThrow(() -> new AccessDeniedException("Authentication is required"));
+    }
+
+    public Optional<CurrentUser> findUser() {
+        return findCurrent().map(CurrentUserService::toUser);
+    }
+
+    public CurrentUser requireUser() {
+        return toUser(requireCurrent());
+    }
+
+    private static CurrentUser toUser(AppUserDetails details) {
+        return new CurrentUser(details.getId(), details.getName(), details.getEmail(), details.getRole(),
+                details.isMustChangePassword());
     }
 
     public Actor requireActor() {

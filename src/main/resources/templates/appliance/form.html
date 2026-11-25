@@ -7,18 +7,18 @@
     <h1 class="h3 mb-3" th:text="#{title.appliance.form}"></h1>
     <form th:action="@{${formAction}}" th:object="${appliance}" method="post" novalidate>
         <div th:replace="~{fragments/layout :: globalErrors}"></div>
-        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: textField('name', #{label.name}, 'text', true)}"></div>
         <div class="mb-3">
-            <label class="form-label" for="category" th:text="#{label.category}"></label>
+            <label class="form-label" for="category"><span th:text="#{label.category}"></span><span class="required-mark" aria-hidden="true"> *</span></label>
             <select class="form-select" th:field="*{category}" th:errorclass="is-invalid">
                 <option value="" th:text="#{label.choose}"></option>
                 <option th:each="c : ${categories}" th:value="${c}" th:text="#{'enum.category.' + ${c}}"></option>
             </select>
             <div class="invalid-feedback" th:if="${#fields.hasErrors('category')}" th:errors="*{category}"></div>
         </div>
-        <div th:replace="~{fragments/layout :: input('model', #{label.model}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: textField('model', #{label.model}, 'text', true)}"></div>
         <div class="mb-3">
-            <label class="form-label" for="manufacturerId" th:text="#{label.manufacturer}"></label>
+            <label class="form-label" for="manufacturerId"><span th:text="#{label.manufacturer}"></span><span class="required-mark" aria-hidden="true"> *</span></label>
             <select class="form-select" th:field="*{manufacturerId}" th:errorclass="is-invalid">
                 <option value="" th:text="#{label.choose}"></option>
                 <option th:each="m : ${manufacturers}" th:value="${m.id}" th:text="${m.name}"></option>
@@ -26,17 +26,21 @@
             <div class="invalid-feedback" th:if="${#fields.hasErrors('manufacturerId')}" th:errors="*{manufacturerId}"></div>
         </div>
         <div class="mb-3">
-            <label class="form-label" for="powerType" th:text="#{label.powerType}"></label>
+            <label class="form-label" for="powerType"><span th:text="#{label.powerType}"></span><span class="required-mark" aria-hidden="true"> *</span></label>
             <select class="form-select" th:field="*{powerType}" th:errorclass="is-invalid">
                 <option value="" th:text="#{label.choose}"></option>
                 <option th:each="p : ${powerTypes}" th:value="${p}" th:text="#{'enum.powerType.' + ${p}}"></option>
             </select>
             <div class="invalid-feedback" th:if="${#fields.hasErrors('powerType')}" th:errors="*{powerType}"></div>
         </div>
-        <div th:replace="~{fragments/layout :: input('characteristic', #{label.characteristic}, 'text')}"></div>
-        <div th:replace="~{fragments/layout :: input('description', #{label.description}, 'text')}"></div>
-        <div th:replace="~{fragments/layout :: input('power', #{label.power}, 'number')}"></div>
-        <div th:replace="~{fragments/layout :: input('price', #{label.price}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: textField('characteristic', #{label.characteristic}, 'text', false)}"></div>
+        <div th:replace="~{fragments/layout :: textField('description', #{label.description}, 'text', false)}"></div>
+        <div th:replace="~{fragments/layout :: textField('power', #{label.power}, 'number', true)}"></div>
+        <div th:replace="~{fragments/layout :: textField('price', #{label.price}, 'text', true)}"></div>
+        <h2 class="h5 mt-4 mb-3" th:text="#{label.translation.uk}"></h2>
+        <div th:replace="~{fragments/layout :: textField('nameUk', #{label.name.uk}, 'text', false)}"></div>
+        <div th:replace="~{fragments/layout :: textField('characteristicUk', #{label.characteristic.uk}, 'text', false)}"></div>
+        <div th:replace="~{fragments/layout :: textField('descriptionUk', #{label.description.uk}, 'text', false)}"></div>
         <button class="btn btn-primary" type="submit" th:text="#{btn.save}"></button>
         <a class="btn btn-link" th:href="@{/appliances}" th:text="#{btn.cancel}"></a>
     </form>

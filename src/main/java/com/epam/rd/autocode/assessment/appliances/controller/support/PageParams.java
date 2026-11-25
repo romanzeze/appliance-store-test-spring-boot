@@ -11,13 +11,14 @@ import java.util.Set;
 public class PageParams {
 
     private static final int MAX_SIZE = 100;
-    private static final int DEFAULT_SIZE = 10;
+    private static final int DEFAULT_SIZE = 4;
 
     private int page;
     private int size = DEFAULT_SIZE;
     private String sort;
     private String dir;
     private String query;
+    private String status;
 
     public String sortProperty(Set<String> allowed, String defaultSort) {
         return sort != null && allowed.contains(sort) ? sort : defaultSort;
@@ -33,7 +34,9 @@ public class PageParams {
 
     public Pageable toPageable(Set<String> allowed, String defaultSort) {
         String property = sortProperty(allowed, defaultSort);
-        Sort order = Sort.by(direction(), property);
+        Sort order = "status".equals(property)
+                ? Sort.by(direction(), "blocked", "mustChangePassword")
+                : Sort.by(direction(), property);
         if (!"id".equals(property)) {
             order = order.and(Sort.by(Sort.Direction.ASC, "id"));
         }

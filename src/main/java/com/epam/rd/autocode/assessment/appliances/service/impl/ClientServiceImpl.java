@@ -1,5 +1,6 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
+import com.epam.rd.autocode.assessment.appliances.aspect.Loggable;
 import com.epam.rd.autocode.assessment.appliances.dto.user.ChangePasswordDto;
 import com.epam.rd.autocode.assessment.appliances.dto.user.ClientDto;
 import com.epam.rd.autocode.assessment.appliances.dto.user.RegistrationDto;
@@ -15,6 +16,7 @@ import com.epam.rd.autocode.assessment.appliances.service.ClientService;
 import com.epam.rd.autocode.assessment.appliances.service.EmailAvailabilityService;
 import com.epam.rd.autocode.assessment.appliances.service.PasswordService;
 import com.epam.rd.autocode.assessment.appliances.service.UserSessionService;
+import com.epam.rd.autocode.assessment.appliances.service.support.AccountStatusFilter;
 import com.epam.rd.autocode.assessment.appliances.service.support.EmailNormalizer;
 import com.epam.rd.autocode.assessment.appliances.validation.AccountType;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Slf4j
+@Loggable
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -44,11 +47,9 @@ public class ClientServiceImpl implements ClientService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ClientDto> findAll(String query, Pageable pageable) {
-        Page<Client> page = StringUtils.hasText(query)
-                ? clientRepository.search(query.trim(), pageable)
-                : clientRepository.findByDeletedFalse(pageable);
-        return page.map(this::toDto);
+    public Page<ClientDto> findAll(String query, String status, Pageable pageable) {
+        String text = StringUtils.hasText(query) ? query.trim() : "";
+        return clientRepository.filter(text, AccountStatusFilter.normalize(status), pageable).map(this::toDto);
     }
 
     @Override

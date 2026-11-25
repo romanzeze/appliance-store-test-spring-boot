@@ -8,6 +8,7 @@ import com.epam.rd.autocode.assessment.appliances.security.PasswordChangeRequire
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
@@ -30,27 +31,33 @@ import org.springframework.security.web.session.HttpSessionEventPublisher;
 public class SecurityConfig {
 
     private static final String[] PUBLIC_PATHS = {
-            "/", "/login", "/register", "/error", "/favicon.ico",
+            "/", "/login", "/register", "/error", "/favicon.ico", "/contact",
             "/css/**", "/js/**", "/images/**", "/webjars/**"
     };
+
+    private static final String CATALOG_PATH = "/appliances";
 
     private static final String[] ADMIN_PATHS = {
             "/employees/**",
             "/audit/**",
-            "/clients/*/erase"
+            "/clients/*/erase",
+            "/clients/deleted",
+            "/clients/*/restore",
+            "/manufacturers/deleted",
+            "/manufacturers/*/restore",
+            "/appliances/deleted",
+            "/appliances/*/restore",
+            "/orders/deleted",
+            "/orders/*/restore"
     };
 
     private static final String[] STAFF_PATHS = {
             "/clients/**",
             "/manufacturers/**",
             "/appliances/add",
-            "/appliances/deleted",
             "/appliances/*/edit",
             "/appliances/*/delete",
-            "/appliances/*/restore",
-            "/orders/deleted",
-            "/orders/*/approve",
-            "/orders/*/restore"
+            "/orders/*/approve"
     };
 
     private final LoggingAccessDeniedHandler accessDeniedHandler;
@@ -92,6 +99,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers(HttpMethod.GET, CATALOG_PATH, CATALOG_PATH + "/{id:\\d+}").permitAll()
                         .requestMatchers(ADMIN_PATHS).hasRole(Role.ADMIN.name())
                         .requestMatchers(STAFF_PATHS).hasRole(Role.EMPLOYEE.name())
                         .anyRequest().authenticated())

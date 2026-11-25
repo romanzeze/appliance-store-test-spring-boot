@@ -1,12 +1,15 @@
 package com.epam.rd.autocode.assessment.appliances.service.impl;
 
+import com.epam.rd.autocode.assessment.appliances.aspect.Loggable;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.ApplianceDto;
 import com.epam.rd.autocode.assessment.appliances.dto.appliance.ApplianceFilterDto;
 import com.epam.rd.autocode.assessment.appliances.exception.OperationNotAllowedException;
 import com.epam.rd.autocode.assessment.appliances.exception.ResourceNotFoundException;
 import com.epam.rd.autocode.assessment.appliances.model.Appliance;
 import com.epam.rd.autocode.assessment.appliances.model.Manufacturer;
+import com.epam.rd.autocode.assessment.appliances.model.ApplianceTranslation;
 import com.epam.rd.autocode.assessment.appliances.repository.ApplianceRepository;
+import com.epam.rd.autocode.assessment.appliances.repository.ApplianceTranslationRepository;
 import com.epam.rd.autocode.assessment.appliances.repository.ApplianceSpecifications;
 import com.epam.rd.autocode.assessment.appliances.repository.ManufacturerRepository;
 import com.epam.rd.autocode.assessment.appliances.service.Actor;
@@ -21,7 +24,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 @Slf4j
+@Loggable
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -31,6 +40,7 @@ public class ApplianceServiceImpl implements ApplianceService {
 
     private final ApplianceRepository applianceRepository;
     private final ManufacturerRepository manufacturerRepository;
+    private final ApplianceTranslationRepository translationRepository;
     private final ModelMapper modelMapper;
     private final AuditService auditService;
 
@@ -38,22 +48,25 @@ public class ApplianceServiceImpl implements ApplianceService {
     @Transactional(readOnly = true)
     public Page<ApplianceDto> search(ApplianceFilterDto filter, Pageable pageable) {
         ApplianceFilterDto criteria = filter == null ? new ApplianceFilterDto() : filter;
-        return applianceRepository
+        Page<ApplianceDto> page = applianceRepository
                 .findAll(ApplianceSpecifications.filter(criteria.getQuery(), criteria.getCategory(),
                         criteria.getManufacturerId(), criteria.getPowerType()), pageable)
                 .map(this::toDto);
+        return withTranslations(page);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<ApplianceDto> findDeleted(Pageable pageable) {
-        return applianceRepository.findByDeletedTrue(pageable).map(this::toDto);
+        return withTranslations(applianceRepository.findByDeletedTrue(pageable).map(this::toDto));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ApplianceDto findById(Long id) {
-        return toDto(activeAppliance(id));
+        ApplianceDto dto = toDto(activeAppliance(id));
+        applyTranslation(dto, translationRepository.findByApplianceIdAndLanguage(id, ApplianceTranslation.UK).orElse(null));
+        return dto;
     }
 
     @Override
@@ -63,9 +76,10 @@ public class ApplianceServiceImpl implements ApplianceService {
         appliance.setId(null);
         appliance.setManufacturer(activeManufacturer(dto.getManufacturerId()));
         Appliance saved = applianceRepository.save(appliance);
+        saveTranslation(saved.getId(), dto);
         auditService.record(actor, AuditAction.CREATED, ENTITY, saved.getId());
         log.debug("Appliance {} created", saved.getId());
-        return toDto(saved);
+        return toDto(saved, dto);
     }
 
     @Override
@@ -76,8 +90,9 @@ public class ApplianceServiceImpl implements ApplianceService {
         modelMapper.map(dto, appliance);
         appliance.setManufacturer(activeManufacturer(dto.getManufacturerId()));
         Appliance saved = applianceRepository.save(appliance);
+        saveTranslation(id, dto);
         auditService.record(actor, AuditAction.UPDATED, ENTITY, id);
-        return toDto(saved);
+        return toDto(saved, dto);
     }
 
     @Override
@@ -117,5 +132,55 @@ public class ApplianceServiceImpl implements ApplianceService {
 
     private ApplianceDto toDto(Appliance appliance) {
         return modelMapper.map(appliance, ApplianceDto.class);
+    }
+
+    private ApplianceDto toDto(Appliance appliance, ApplianceDto source) {
+        ApplianceDto dto = toDto(appliance);
+        dto.setNameUk(source.getNameUk());
+        dto.setCharacteristicUk(source.getCharacteristicUk());
+        dto.setDescriptionUk(source.getDescriptionUk());
+        return dto;
+    }
+
+    private Page<ApplianceDto> withTranslations(Page<ApplianceDto> page) {
+        if (page.isEmpty()) {
+            return page;
+        }
+        Map<Long, ApplianceTranslation> byAppliance = translationRepository
+                .findByApplianceIdInAndLanguage(page.getContent().stream().map(ApplianceDto::getId).toList(), ApplianceTranslation.UK)
+                .stream().collect(Collectors.toMap(ApplianceTranslation::getApplianceId, Function.identity()));
+        page.getContent().forEach(dto -> applyTranslation(dto, byAppliance.get(dto.getId())));
+        return page;
+    }
+
+    private void applyTranslation(ApplianceDto dto, ApplianceTranslation translation) {
+        if (translation != null) {
+            dto.setNameUk(translation.getName());
+            dto.setCharacteristicUk(translation.getCharacteristic());
+            dto.setDescriptionUk(translation.getDescription());
+        }
+    }
+
+    private void saveTranslation(Long applianceId, ApplianceDto dto) {
+        Optional<ApplianceTranslation> existing = translationRepository.findByApplianceIdAndLanguage(applianceId, ApplianceTranslation.UK);
+        boolean empty = isBlank(dto.getNameUk()) && isBlank(dto.getCharacteristicUk()) && isBlank(dto.getDescriptionUk());
+        if (empty) {
+            existing.ifPresent(translationRepository::delete);
+            return;
+        }
+        ApplianceTranslation translation = existing.orElseGet(() -> ApplianceTranslation.builder()
+                .applianceId(applianceId).language(ApplianceTranslation.UK).build());
+        translation.setName(blankToNull(dto.getNameUk()));
+        translation.setCharacteristic(blankToNull(dto.getCharacteristicUk()));
+        translation.setDescription(blankToNull(dto.getDescriptionUk()));
+        translationRepository.save(translation);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private String blankToNull(String value) {
+        return isBlank(value) ? null : value.trim();
     }
 }

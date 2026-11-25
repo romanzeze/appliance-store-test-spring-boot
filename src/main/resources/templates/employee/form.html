@@ -8,9 +8,9 @@
     <p class="text-muted" th:if="${creating}" th:text="#{employee.create.hint}"></p>
     <form th:action="@{${formAction}}" th:object="${employee}" method="post" novalidate>
         <div th:replace="~{fragments/layout :: globalErrors}"></div>
-        <div th:replace="~{fragments/layout :: input('name', #{label.name}, 'text')}"></div>
-        <div th:replace="~{fragments/layout :: input('email', #{label.email}, 'email')}"></div>
-        <div th:replace="~{fragments/layout :: input('department', #{label.department}, 'text')}"></div>
+        <div th:replace="~{fragments/layout :: textField('name', #{label.name}, 'text', true)}"></div>
+        <div th:replace="~{fragments/layout :: textField('email', #{label.email}, 'email', true)}"></div>
+        <div th:replace="~{fragments/layout :: textField('department', #{label.department}, 'text', true)}"></div>
         <div class="mb-3" th:if="${creating}">
             <label class="form-label" for="role" th:text="#{label.role}"></label>
             <select class="form-select" th:field="*{role}" th:errorclass="is-invalid">

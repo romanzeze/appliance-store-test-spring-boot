@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" th:lang="${#locale.language}">
 <head th:replace="~{fragments/layout :: head(#{title.manufacturers})}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
@@ -9,7 +9,7 @@
         <h1 class="h3 mb-0" th:text="${deletedView} ? #{title.manufacturers.deleted} : #{title.manufacturers}"></h1>
         <div class="d-flex gap-2">
             <a th:if="${!deletedView}" class="btn btn-primary" th:href="@{/manufacturers/add}" th:text="#{btn.add}"></a>
-            <a th:if="${!deletedView}" class="btn btn-outline-secondary" th:href="@{/manufacturers/deleted}" th:text="#{btn.show.deleted}"></a>
+            <a th:if="${!deletedView}" sec:authorize="hasRole('ADMIN')" class="btn btn-outline-secondary" th:href="@{/manufacturers/deleted}" th:text="#{btn.show.deleted}"></a>
             <a th:if="${deletedView}" class="btn btn-outline-secondary" th:href="@{/manufacturers}" th:text="#{btn.show.active}"></a>
         </div>
     </div>
@@ -20,7 +20,7 @@
     <p class="text-muted" th:if="${items.isEmpty()}" th:text="#{label.empty}"></p>
     <table class="table table-hover" th:unless="${items.isEmpty()}">
         <thead>
-        <tr class="table-dark">
+        <tr class="table-head">
             <th th:replace="~{fragments/layout :: sortable('id', #{label.id})}"></th>
             <th th:replace="~{fragments/layout :: sortable('name', #{label.name})}"></th>
             <th th:text="#{label.actions}"></th>

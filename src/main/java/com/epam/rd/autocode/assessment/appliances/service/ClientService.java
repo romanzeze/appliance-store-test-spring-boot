@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface ClientService {
 
-    Page<ClientDto> findAll(String query, Pageable pageable);
+    Page<ClientDto> findAll(String query, String status, Pageable pageable);
 
     Page<ClientDto> findDeleted(Pageable pageable);
 

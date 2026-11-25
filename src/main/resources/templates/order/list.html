@@ -10,7 +10,7 @@
         <div class="d-flex gap-2">
             <a th:if="${!deletedView}" class="btn btn-primary" th:href="@{/orders/new}" th:text="#{btn.new.order}"></a>
             <th:block sec:authorize="hasRole('EMPLOYEE')">
-                <a th:if="${!deletedView}" class="btn btn-outline-secondary" th:href="@{/orders/deleted}" th:text="#{btn.show.deleted}"></a>
+                <a th:if="${!deletedView}" sec:authorize="hasRole('ADMIN')" class="btn btn-outline-secondary" th:href="@{/orders/deleted}" th:text="#{btn.show.deleted}"></a>
                 <a th:if="${deletedView}" class="btn btn-outline-secondary" th:href="@{/orders}" th:text="#{btn.show.active}"></a>
             </th:block>
         </div>
@@ -24,7 +24,7 @@
     <div class="table-responsive" th:unless="${items.isEmpty()}">
         <table class="table table-hover align-middle">
             <thead>
-            <tr class="table-dark">
+            <tr class="table-head">
                 <th th:replace="~{fragments/layout :: sortable('id', #{label.id})}"></th>
                 <th th:text="#{label.client}"></th>
                 <th th:text="#{label.employee}"></th>

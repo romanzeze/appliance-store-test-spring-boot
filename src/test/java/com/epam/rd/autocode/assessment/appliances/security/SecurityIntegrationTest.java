@@ -65,7 +65,20 @@ class SecurityIntegrationTest {
 
     @Test
     void anonymousIsRedirectedToLoginFromProtectedPages() throws Exception {
-        mockMvc.perform(get("/appliances"))
+        mockMvc.perform(get("/orders"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("http://localhost/login"));
+    }
+
+    @Test
+    void catalogIsPublicButManagementPagesAreNot() throws Exception {
+        mockMvc.perform(get("/appliances")).andExpect(status().isOk());
+        for (String path : new String[]{"/appliances/add", "/appliances/deleted", "/appliances/1/edit"}) {
+            mockMvc.perform(get(path))
+                    .andExpect(status().is3xxRedirection())
+                    .andExpect(redirectedUrl("http://localhost/login"));
+        }
+        mockMvc.perform(post("/appliances/1/delete").with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("http://localhost/login"));
     }

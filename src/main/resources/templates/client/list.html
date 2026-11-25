@@ -8,23 +8,32 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0" th:text="${deletedView} ? #{title.clients.deleted} : #{title.clients}"></h1>
         <div>
-            <a th:if="${!deletedView}" class="btn btn-outline-secondary" th:href="@{/clients/deleted}" th:text="#{btn.show.deleted}"></a>
+            <a th:if="${!deletedView}" sec:authorize="hasRole('ADMIN')" class="btn btn-outline-secondary" th:href="@{/clients/deleted}" th:text="#{btn.show.deleted}"></a>
             <a th:if="${deletedView}" class="btn btn-outline-secondary" th:href="@{/clients}" th:text="#{btn.show.active}"></a>
         </div>
     </div>
     <form th:if="${!deletedView}" th:action="@{/clients}" method="get" class="row g-2 mb-3">
         <div class="col-auto"><input class="form-control" type="search" name="query" th:value="${query}" th:placeholder="#{label.search}"/></div>
-        <div class="col-auto"><button class="btn btn-outline-primary" type="submit" th:text="#{btn.search}"></button></div>
+        <div class="col-auto">
+            <select class="form-select" name="status" data-auto-submit>
+                <option value="" th:text="#{label.allStatuses}"></option>
+                <option th:each="s : ${statuses}" th:value="${s}" th:text="#{'enum.status.' + ${s}}" th:selected="${s == status}"></option>
+            </select>
+        </div>
+        <div class="col-auto d-flex align-items-center gap-2">
+            <button class="btn btn-primary" type="submit" th:text="#{btn.search}"></button>
+            <a class="btn btn-link" th:href="@{/clients}" th:text="#{btn.reset}"></a>
+        </div>
     </form>
     <p class="text-muted" th:if="${items.isEmpty()}" th:text="#{label.empty}"></p>
     <div class="table-responsive" th:unless="${items.isEmpty()}">
         <table class="table table-hover align-middle">
             <thead>
-            <tr class="table-dark">
+            <tr class="table-head">
                 <th th:replace="~{fragments/layout :: sortable('id', #{label.id})}"></th>
                 <th th:replace="~{fragments/layout :: sortable('name', #{label.name})}"></th>
                 <th th:replace="~{fragments/layout :: sortable('email', #{label.email})}"></th>
-                <th th:text="#{label.status}"></th>
+                <th th:replace="~{fragments/layout :: sortable('status', #{label.status})}"></th>
                 <th th:text="#{label.actions}"></th>
             </tr>
             </thead>

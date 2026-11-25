@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}">
+<head th:replace="~{fragments/layout :: head(#{title.audit})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container py-4">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+    <h1 class="h3 mb-3" th:text="#{title.audit}"></h1>
+    <form th:action="@{/audit}" method="get" class="row g-2 mb-3">
+        <div class="col-auto">
+            <select class="form-select" name="action" data-auto-submit>
+                <option value="" th:text="#{label.allActions}"></option>
+                <option th:each="a : ${actions}" th:value="${a}" th:text="#{'enum.audit.' + ${a}}" th:selected="${a.name() == action}"></option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <select class="form-select" name="entityType" data-auto-submit>
+                <option value="" th:text="#{label.allEntities}"></option>
+                <option th:each="e : ${entityTypes}" th:value="${e}" th:text="#{'enum.entity.' + ${e}}" th:selected="${e == entityType}"></option>
+            </select>
+        </div>
+        <div class="col-auto d-flex align-items-center gap-2">
+            <button class="btn btn-primary" type="submit" th:text="#{btn.search}"></button>
+            <a class="btn btn-link" th:href="@{/audit}" th:text="#{btn.reset}"></a>
+        </div>
+    </form>
+    <p class="text-muted" th:if="${items.isEmpty()}" th:text="#{label.empty}"></p>
+    <div class="table-responsive" th:unless="${items.isEmpty()}">
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr class="table-head">
+                <th th:replace="~{fragments/layout :: sortable('id', #{label.id})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('createdAt', #{label.date})}"></th>
+                <th th:text="#{label.actor}"></th>
+                <th th:replace="~{fragments/layout :: sortable('action', #{label.action})}"></th>
+                <th th:replace="~{fragments/layout :: sortable('entityType', #{label.entity})}"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="item : ${items}">
+                <td th:text="${item.id}"></td>
+                <td th:text="${#temporals.format(item.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
+                <td th:text="#{'enum.role.' + ${item.actorRole}} + (${item.actorId} != null ? ' #' + ${item.actorId} : '')"></td>
+                <td th:text="#{'enum.audit.' + ${item.action}}"></td>
+                <td th:text="#{'enum.entity.' + ${item.entityType}} + (${item.entityId} != null ? ' #' + ${item.entityId} : '')"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <nav th:replace="~{fragments/layout :: pager}"></nav>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

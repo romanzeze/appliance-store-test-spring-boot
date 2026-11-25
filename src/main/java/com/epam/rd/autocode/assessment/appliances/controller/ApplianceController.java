@@ -11,6 +11,7 @@ import com.epam.rd.autocode.assessment.appliances.model.PowerType;
 import com.epam.rd.autocode.assessment.appliances.security.CurrentUserService;
 import com.epam.rd.autocode.assessment.appliances.service.ApplianceService;
 import com.epam.rd.autocode.assessment.appliances.service.ManufacturerService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class ApplianceController {
     private static final String PATH = "/appliances";
     private static final String LIST_VIEW = "appliance/list";
     private static final String FORM_VIEW = "appliance/form";
+    private static final String DETAILS_VIEW = "appliance/details";
     private static final Set<String> SORTABLE = Set.of("id", "name", "category", "model", "power", "price");
 
     private final ApplianceService applianceService;
@@ -47,11 +49,12 @@ public class ApplianceController {
     @InitBinder("appliance")
     void initBinder(WebDataBinder binder) {
         binder.setAllowedFields("name", "category", "model", "manufacturerId", "powerType",
-                "characteristic", "description", "power", "price");
+                "characteristic", "description", "power", "price", "nameUk", "characteristicUk", "descriptionUk");
     }
 
     @GetMapping
-    public String list(PageParams params, @ModelAttribute("filter") ApplianceFilterDto filter, Model model) {
+    public String list(PageParams params, @ModelAttribute("filter") ApplianceFilterDto filter, Model model,
+                       HttpServletRequest request) {
         Page<ApplianceDto> page = applianceService.search(filter, params.toPageable(SORTABLE, "name"));
         Map<String, Object> filters = new LinkedHashMap<>();
         filters.put("query", filter.getQuery());
@@ -64,8 +67,16 @@ public class ApplianceController {
         model.addAttribute("categories", Category.values());
         model.addAttribute("powerTypes", PowerType.values());
         model.addAttribute("deletedView", false);
+        String queryString = request.getQueryString();
+        model.addAttribute("returnTo", queryString == null ? PATH : PATH + "?" + queryString);
         return LIST_VIEW;
     }
+    @GetMapping("/{id:\\d+}")
+    public String details(@PathVariable Long id, Model model) {
+        model.addAttribute("item", applianceService.findById(id));
+        return DETAILS_VIEW;
+    }
+
     @GetMapping("/deleted")
     public String deleted(PageParams params, Model model) {
         Page<ApplianceDto> page = applianceService.findDeleted(params.toPageable(SORTABLE, "name"));

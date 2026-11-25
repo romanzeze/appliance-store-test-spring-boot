@@ -9,6 +9,7 @@ import com.epam.rd.autocode.assessment.appliances.model.Client;
 import com.epam.rd.autocode.assessment.appliances.model.Employee;
 import com.epam.rd.autocode.assessment.appliances.model.PowerType;
 import com.epam.rd.autocode.assessment.appliances.model.Role;
+import com.epam.rd.autocode.assessment.appliances.repository.AuditLogRepository;
 import com.epam.rd.autocode.assessment.appliances.repository.ClientRepository;
 import com.epam.rd.autocode.assessment.appliances.repository.EmployeeRepository;
 import com.epam.rd.autocode.assessment.appliances.security.AppUserDetails;
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,11 +32,14 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -55,6 +60,8 @@ class WebLayerIntegrationTest {
     private ClientRepository clientRepository;
     @Autowired
     private EmployeeRepository employeeRepository;
+    @Autowired
+    private AuditLogRepository auditLogRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
@@ -111,8 +118,19 @@ class WebLayerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("appliance/list"))
                 .andExpect(content().string(containsString("Zeta Fridge")))
-                .andExpect(content().string(containsString("/orders/new?applianceId=")))
+                .andExpect(content().string(containsString("/cart/add")))
                 .andExpect(content().string(not(containsString("/appliances/add"))));
+    }
+
+    @Test
+    void anonymousVisitorSeesCatalogWithoutManagementButtons() throws Exception {
+        mockMvc.perform(get("/appliances").param("query", "Zeta"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Zeta Fridge")))
+                .andExpect(content().string(containsString("href=\"/login\"")))
+                .andExpect(content().string(not(containsString("/appliances/add"))))
+                .andExpect(content().string(not(containsString("/delete"))))
+                .andExpect(content().string(not(containsString("href=\"/orders\""))));
     }
 
     @Test
@@ -236,6 +254,21 @@ class WebLayerIntegrationTest {
     }
 
     @Test
+    void formFieldsAreRenderedExactlyOnce() throws Exception {
+        String registerPage = mockMvc.perform(get("/register")).andReturn().getResponse().getContentAsString();
+        for (String field : new String[]{"name", "email", "card", "password", "confirmPassword"}) {
+            org.assertj.core.api.Assertions.assertThat(registerPage.split("id=\"" + field + "\"", -1).length - 1)
+                    .as("occurrences of field " + field).isEqualTo(1);
+        }
+        String applianceForm = mockMvc.perform(get("/appliances/add").with(user(asEmployee())))
+                .andReturn().getResponse().getContentAsString();
+        for (String field : new String[]{"name", "model", "characteristic", "description", "power", "price"}) {
+            org.assertj.core.api.Assertions.assertThat(applianceForm.split("id=\"" + field + "\"", -1).length - 1)
+                    .as("occurrences of field " + field).isEqualTo(1);
+        }
+    }
+
+    @Test
     void registrationCreatesClientAndRedirectsToLogin() throws Exception {
         mockMvc.perform(post("/register").with(csrf())
                         .param("name", "New Client").param("email", "new@web.test").param("card", "1111 2222")
@@ -301,10 +334,36 @@ class WebLayerIntegrationTest {
 
     @Test
     void adminListsEmployees() throws Exception {
-        mockMvc.perform(get("/employees").with(user(asAdmin())))
+        mockMvc.perform(get("/employees").param("size", "50").with(user(asAdmin())))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("pippen@web.test")))
                 .andExpect(content().string(containsString("reset-password")));
+    }
+
+    @Test
+    void listsUseFourItemsPerPageByDefault() throws Exception {
+        mockMvc.perform(get("/employees").with(user(asAdmin())))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("size", 4))
+                .andExpect(model().attribute("items", hasSize(lessThanOrEqualTo(4))));
+    }
+
+    @Test
+    void employeesCanBeFilteredByStatus() throws Exception {
+        mockMvc.perform(get("/employees").param("status", "BLOCKED").param("size", "50").with(user(asAdmin())))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("status", "BLOCKED"))
+                .andExpect(content().string(not(containsString("pippen@web.test"))));
+        mockMvc.perform(get("/employees").param("status", "ACTIVE").param("size", "50").with(user(asAdmin())))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("pippen@web.test")));
+    }
+
+    @Test
+    void unknownStatusFilterIsIgnored() throws Exception {
+        mockMvc.perform(get("/clients").param("status", "bogus").with(user(asAdmin())))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("status", ""));
     }
 
     @Test
@@ -412,9 +471,24 @@ class WebLayerIntegrationTest {
     }
 
     @Test
-    void deletedOrdersAreVisibleOnlyToStaff() throws Exception {
-        mockMvc.perform(get("/orders/deleted").with(user(asClient()))).andExpect(status().isForbidden());
-        mockMvc.perform(get("/orders/deleted").with(user(asEmployee()))).andExpect(status().isOk());
+    void deletedViewsAreVisibleOnlyToAdmin() throws Exception {
+        for (String path : new String[]{"/orders/deleted", "/appliances/deleted", "/clients/deleted", "/manufacturers/deleted"}) {
+            mockMvc.perform(get(path).with(user(asClient()))).andExpect(status().isForbidden());
+            mockMvc.perform(get(path).with(user(asEmployee()))).andExpect(status().isForbidden());
+            mockMvc.perform(get(path).with(user(asAdmin()))).andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    void showDeletedButtonIsHiddenFromEmployee() throws Exception {
+        for (String path : new String[]{"/orders", "/appliances", "/clients", "/manufacturers"}) {
+            mockMvc.perform(get(path).with(user(asEmployee())))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(not(containsString(path + "/deleted"))));
+            mockMvc.perform(get(path).with(user(asAdmin())))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString(path + "/deleted")));
+        }
     }
 
     @Test
@@ -450,5 +524,250 @@ class WebLayerIntegrationTest {
     @Test
     void employeeCannotUseClientSelfService() throws Exception {
         mockMvc.perform(form(post("/account/deactivate"), asEmployee())).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void auditLogIsVisibleOnlyToAdmin() throws Exception {
+        mockMvc.perform(get("/audit")).andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/audit").with(user(asClient()))).andExpect(status().isForbidden());
+        mockMvc.perform(get("/audit").with(user(asEmployee()))).andExpect(status().isForbidden());
+        mockMvc.perform(get("/audit").with(user(asAdmin())))
+                .andExpect(status().isOk())
+                .andExpect(view().name("audit/list"));
+    }
+
+    @Test
+    void serviceActionsArePersistedWithIdsOnly() {
+        var rows = auditLogRepository.findAll();
+        org.junit.jupiter.api.Assertions.assertTrue(rows.stream().anyMatch(a ->
+                "CREATED".equals(a.getAction()) && "Manufacturer".equals(a.getEntityType())
+                        && admin.getId().equals(a.getActorId()) && a.getActorRole() == Role.ADMIN && a.getCreatedAt() != null));
+        org.junit.jupiter.api.Assertions.assertTrue(rows.stream().anyMatch(a ->
+                "CREATED".equals(a.getAction()) && "Appliance".equals(a.getEntityType())));
+    }
+
+    @Test
+    void auditLogCanBeFilteredByActionAndEntity() throws Exception {
+        mockMvc.perform(get("/audit").with(user(asAdmin())).param("action", "CREATED").param("entityType", "Manufacturer").param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("action", "CREATED"))
+                .andExpect(model().attribute("entityType", "Manufacturer"))
+                .andExpect(model().attribute("items", hasSize(1)));
+        mockMvc.perform(get("/audit").with(user(asAdmin())).param("action", "DELETED").param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("items", hasSize(0)));
+    }
+
+    @Test
+    void unknownAuditFiltersAreIgnoredAndListIsNewestFirstPaged() throws Exception {
+        mockMvc.perform(get("/audit").with(user(asAdmin())).param("action", "x' or '1'='1").param("entityType", "zzz"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("action", ""))
+                .andExpect(model().attribute("entityType", ""))
+                .andExpect(model().attribute("dir", "desc"))
+                .andExpect(model().attribute("items", hasSize(lessThanOrEqualTo(4))));
+    }
+
+    @Test
+    void auditLinkIsShownOnlyToAdmin() throws Exception {
+        mockMvc.perform(get("/appliances").with(user(asEmployee())))
+                .andExpect(content().string(not(containsString("href=\"/audit\""))));
+        mockMvc.perform(get("/appliances").with(user(asAdmin())))
+                .andExpect(content().string(containsString("href=\"/audit\"")));
+    }
+
+    @Test
+    void cartAccumulatesItemsAcrossAdditionsAndFeedsOrderForm() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        ApplianceDto second = applianceService.create(ApplianceDto.builder()
+                .name("Zeta Kettle").category(Category.SMALL).model("ZK-1").manufacturerId(appliance.getManufacturerId())
+                .powerType(PowerType.AC220).power(10).price(new BigDecimal("9.90")).build(), new Actor(admin.getId(), Role.ADMIN));
+        mockMvc.perform(form(post("/cart/add"), asClient()).session(session).param("applianceId", appliance.getId().toString()).param("next", "/appliances?page=1"))
+                .andExpect(redirectedUrl("/appliances?page=1"));
+        mockMvc.perform(form(post("/cart/add"), asClient()).session(session).param("applianceId", appliance.getId().toString()))
+                .andExpect(redirectedUrl("/appliances"));
+        mockMvc.perform(form(post("/cart/add"), asClient()).session(session).param("applianceId", second.getId().toString()))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/orders/new").with(user(asClient())).session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("rows[0].applianceId")))
+                .andExpect(content().string(containsString("rows[1].applianceId")))
+                .andExpect(content().string(containsString("value=\"2\"")));
+        mockMvc.perform(get("/appliances").with(user(asClient())).session(session))
+                .andExpect(content().string(containsString("badge text-bg-success\">3<")));
+        mockMvc.perform(form(post("/cart/clear"), asClient()).session(session)).andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/appliances").with(user(asClient())).session(session))
+                .andExpect(content().string(containsString("badge text-bg-success\">0<")));
+    }
+
+    @Test
+    void cartRejectsExternalRedirectTargetsAndUnknownAppliances() throws Exception {
+        mockMvc.perform(form(post("/cart/add"), asClient()).param("applianceId", appliance.getId().toString()).param("next", "https://evil.test"))
+                .andExpect(redirectedUrl("/appliances"));
+        mockMvc.perform(form(post("/cart/add"), asClient()).param("applianceId", appliance.getId().toString()).param("next", "//evil.test"))
+                .andExpect(redirectedUrl("/appliances"));
+        mockMvc.perform(form(post("/cart/add"), asClient()).param("applianceId", "999999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void successfulOrderEmptiesCart() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        mockMvc.perform(form(post("/cart/add"), asClient()).session(session).param("applianceId", appliance.getId().toString()));
+        mockMvc.perform(form(post("/orders/new"), asClient()).session(session)
+                        .param("rows[0].applianceId", appliance.getId().toString()).param("rows[0].number", "1"))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/appliances").with(user(asClient())).session(session))
+                .andExpect(content().string(containsString("badge text-bg-success\">0<")));
+    }
+
+    @Test
+    void guestsAreSentToLoginInsteadOfCart() throws Exception {
+        mockMvc.perform(form(post("/cart/add"), asClient()).param("applianceId", "1")).andExpect(status().is3xxRedirection());
+        mockMvc.perform(post("/cart/add").with(csrf()).param("applianceId", "1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("**/login"));
+    }
+
+    @Test
+    void productPageIsPublicAndLocalized() throws Exception {
+        applianceService.update(appliance.getId(), ApplianceDto.builder()
+                .name("Zeta Fridge").category(Category.BIG).model("ZF-1").manufacturerId(appliance.getManufacturerId())
+                .powerType(PowerType.AC220).power(150).price(new BigDecimal("499.90"))
+                .nameUk("Холодильник Зета").descriptionUk("Опис українською").build(), new Actor(admin.getId(), Role.ADMIN));
+        String path = "/appliances/" + appliance.getId();
+        mockMvc.perform(get(path))
+                .andExpect(status().isOk())
+                .andExpect(view().name("appliance/details"))
+                .andExpect(content().string(containsString("Zeta Fridge")))
+                .andExpect(content().string(not(containsString("Холодильник Зета"))));
+        mockMvc.perform(get(path).param("lang", "uk"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Холодильник Зета")))
+                .andExpect(content().string(containsString("Опис українською")));
+        mockMvc.perform(get("/appliances").param("lang", "uk").param("query", "Холодильник"))
+                .andExpect(content().string(containsString("Холодильник Зета")));
+        mockMvc.perform(get("/appliances/999999")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void catalogSearchMatchesManufacturerName() throws Exception {
+        mockMvc.perform(get("/appliances").param("query", "zeta corp"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Zeta Fridge")));
+        mockMvc.perform(get("/appliances").param("query", "nobody-makes-this"))
+                .andExpect(content().string(not(containsString("Zeta Fridge"))));
+    }
+
+    @Test
+    void manufacturerFilterNarrowsCatalog() throws Exception {
+        mockMvc.perform(get("/appliances").param("manufacturerId", appliance.getManufacturerId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Zeta Fridge")));
+        mockMvc.perform(get("/appliances").param("manufacturerId", "999999"))
+                .andExpect(content().string(not(containsString("Zeta Fridge"))));
+    }
+
+    @Test
+    void contactFormIsPublicAndValidated() throws Exception {
+        mockMvc.perform(get("/contact")).andExpect(status().isOk()).andExpect(view().name("contact/form"));
+        mockMvc.perform(post("/contact").with(csrf()).param("name", "").param("email", "bad").param("message", ""))
+                .andExpect(status().isOk()).andExpect(view().name("contact/form"));
+        mockMvc.perform(post("/contact").with(csrf()).param("name", "Guest").param("email", "guest@web.test").param("message", "Hello"))
+                .andExpect(redirectedUrl("/contact"));
+    }
+
+    @Test
+    void contactFormIsPrefilledForSignedInClient() throws Exception {
+        mockMvc.perform(get("/contact").with(user(asClient())))
+                .andExpect(content().string(containsString("magic@web.test")))
+                .andExpect(content().string(containsString("Magic")));
+        mockMvc.perform(form(post("/contact"), asClient()).param("name", "Magic").param("email", "magic@web.test").param("message", "Hi"))
+                .andExpect(redirectedUrl("/contact"));
+    }
+
+    @Test
+    void footerLinksToContactForm() throws Exception {
+        mockMvc.perform(get("/")).andExpect(content().string(containsString("href=\"/contact\"")));
+    }
+
+    @Test
+    void navbarShowsAccountHolderName() throws Exception {
+        mockMvc.perform(get("/appliances").with(user(asClient())))
+                .andExpect(content().string(containsString(">Magic</a>")));
+    }
+
+    @Test
+    void requiredFieldsAreMarkedAndCardInputIsMasked() throws Exception {
+        mockMvc.perform(get("/register"))
+                .andExpect(content().string(containsString("required-mark")))
+                .andExpect(content().string(containsString("data-card-mask")))
+                .andExpect(content().string(containsString("inputmode=\"numeric\"")));
+    }
+
+    @Test
+    void auditLogDoesNotContainClientActions() throws Exception {
+        orderService.create(OrderDto.builder()
+                .rows(new java.util.ArrayList<>(List.of(OrderRowDto.builder().applianceId(appliance.getId()).number(1L).build())))
+                .build(), new Actor(client.getId(), Role.USER));
+        org.junit.jupiter.api.Assertions.assertTrue(auditLogRepository.findAll().stream()
+                .noneMatch(a -> a.getActorRole() == Role.USER));
+        mockMvc.perform(get("/audit").with(user(asAdmin())).param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(result -> {
+                    List<?> items = (List<?>) result.getModelAndView().getModel().get("items");
+                    org.junit.jupiter.api.Assertions.assertFalse(items.isEmpty());
+                    items.forEach(item -> org.junit.jupiter.api.Assertions.assertNotEquals(Role.USER,
+                            ((com.epam.rd.autocode.assessment.appliances.dto.audit.AuditLogDto) item).actorRole()));
+                });
+    }
+
+    @Test
+    void staffCanSearchClientsPagedForOrderForm() throws Exception {
+        mockMvc.perform(get("/clients/search").with(user(asEmployee())).param("query", client.getName().substring(0, 3)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(client.getId()))
+                .andExpect(jsonPath("$.page").value(0));
+        mockMvc.perform(get("/clients/search").with(user(asEmployee())).param("query", "zzz-no-such-client"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty());
+        mockMvc.perform(get("/clients/search").with(user(asClient())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void orderFormShowsClientPickerForStaff() throws Exception {
+        mockMvc.perform(get("/orders/new").with(user(asEmployee())))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("client-picker")));
+    }
+
+    @Test
+    void clientsCanBeSortedByStatusActiveFirstThenBlocked() throws Exception {
+        mockMvc.perform(form(post("/clients/" + client.getId() + "/block"), asEmployee()));
+        java.util.function.Function<String, List<Boolean>> blockedOrder = dir -> {
+            try {
+                var result = mockMvc.perform(get("/clients").with(user(asEmployee())).param("sort", "status").param("dir", dir).param("size", "50"))
+                        .andExpect(status().isOk()).andReturn();
+                List<?> items = (List<?>) result.getModelAndView().getModel().get("items");
+                return items.stream().map(i -> ((com.epam.rd.autocode.assessment.appliances.dto.user.ClientDto) i).isBlocked()).toList();
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        };
+        List<Boolean> asc = blockedOrder.apply("asc");
+        List<Boolean> desc = blockedOrder.apply("desc");
+        org.junit.jupiter.api.Assertions.assertTrue(asc.contains(true));
+        org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, asc.get(asc.size() - 1));
+        org.junit.jupiter.api.Assertions.assertEquals(Boolean.FALSE, asc.get(0));
+        org.junit.jupiter.api.Assertions.assertEquals(Boolean.TRUE, desc.get(0));
+    }
+
+    @Test
+    void employeesCanBeSortedByStatus() throws Exception {
+        mockMvc.perform(get("/employees").with(user(asAdmin())).param("sort", "status").param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(model().attribute("sort", "status"))
+                .andExpect(content().string(containsString("sort=status")));
     }
 }

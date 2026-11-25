@@ -3,6 +3,12 @@ package com.epam.rd.autocode.assessment.appliances.repository;
 import com.epam.rd.autocode.assessment.appliances.model.Appliance;
 import com.epam.rd.autocode.assessment.appliances.model.Category;
 import com.epam.rd.autocode.assessment.appliances.model.PowerType;
+import com.epam.rd.autocode.assessment.appliances.model.ApplianceTranslation;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
@@ -29,7 +35,18 @@ public final class ApplianceSpecifications {
         String pattern = "%" + text.trim().toLowerCase() + "%";
         return (root, query, cb) -> cb.or(
                 cb.like(cb.lower(root.get("name")), pattern),
-                cb.like(cb.lower(root.get("model")), pattern));
+                translationMatches(root, query, cb, pattern),
+                cb.like(cb.lower(root.get("model")), pattern),
+                cb.like(cb.lower(root.get("manufacturer").get("name")), pattern));
+    }
+
+    private static Predicate translationMatches(Root<Appliance> root, CriteriaQuery<?> query, CriteriaBuilder cb, String pattern) {
+        Subquery<Long> subquery = query.subquery(Long.class);
+        Root<ApplianceTranslation> translation = subquery.from(ApplianceTranslation.class);
+        subquery.select(translation.<Long>get("id")).where(
+                cb.equal(translation.get("applianceId"), root.get("id")),
+                cb.like(cb.lower(translation.<String>get("name")), pattern));
+        return cb.exists(subquery);
     }
 
     private static Specification<Appliance> hasCategory(Category category) {
