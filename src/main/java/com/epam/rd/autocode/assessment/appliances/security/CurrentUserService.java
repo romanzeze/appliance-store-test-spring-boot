@@ -47,6 +47,14 @@ public class CurrentUserService {
                 details.isMustChangePassword());
     }
 
+    public CurrentUser requireStoredUser() {
+        AppUserDetails current = requireCurrent();
+        if (current.isInMemory()) {
+            throw new AccessDeniedException("In-memory account has no stored profile");
+        }
+        return toUser(current);
+    }
+
     public Actor requireActor() {
         return requireCurrent().toActor();
     }

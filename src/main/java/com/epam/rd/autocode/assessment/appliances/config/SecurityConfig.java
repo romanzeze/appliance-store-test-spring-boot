@@ -3,6 +3,7 @@ package com.epam.rd.autocode.assessment.appliances.config;
 import com.epam.rd.autocode.assessment.appliances.model.Role;
 import com.epam.rd.autocode.assessment.appliances.security.AppUserDetailsService;
 import com.epam.rd.autocode.assessment.appliances.security.AuditLogoutHandler;
+import com.epam.rd.autocode.assessment.appliances.security.InMemoryAccountService;
 import com.epam.rd.autocode.assessment.appliances.security.JwtAuthenticationFilter;
 import com.epam.rd.autocode.assessment.appliances.security.JwtLoginSuccessHandler;
 import com.epam.rd.autocode.assessment.appliances.security.JwtService;
@@ -19,11 +20,16 @@ import org.springframework.security.access.expression.method.DefaultMethodSecuri
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
+import org.springframework.security.authentication.AuthenticationEventPublisher;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
@@ -71,11 +77,27 @@ public class SecurityConfig {
     private final JwtLoginSuccessHandler loginSuccessHandler;
     private final JwtService jwtService;
     private final AppUserDetailsService userDetailsService;
+    private final InMemoryAccountService inMemoryAccountService;
     private final LoginAttemptService loginAttemptService;
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public static PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationEventPublisher eventPublisher) {
+        ProviderManager manager = new ProviderManager(
+                provider(userDetailsService), provider(inMemoryAccountService));
+        manager.setAuthenticationEventPublisher(eventPublisher);
+        return manager;
+    }
+
+    private static DaoAuthenticationProvider provider(UserDetailsService service) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(service);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
     }
 
     @Bean
@@ -94,9 +116,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authenticationManager)
             throws Exception {
         http
+                .authenticationManager(authenticationManager)
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         .requestMatchers(HttpMethod.GET, CATALOG_PATH, CATALOG_PATH + "/{id:\\d+}").permitAll()

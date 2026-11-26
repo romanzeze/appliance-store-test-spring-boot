@@ -22,6 +22,7 @@ public class AppUserDetailsService implements UserDetailsService {
     private final ClientRepository clientRepository;
     private final EmployeeRepository employeeRepository;
     private final Clock clock;
+    private final InMemoryAccountService inMemoryAccountService;
 
     @Override
     @Transactional(readOnly = true)
@@ -42,6 +43,10 @@ public class AppUserDetailsService implements UserDetailsService {
 
     @Transactional(readOnly = true)
     public AppUserDetails loadByAccount(AccountType accountType, Long id) {
+        if (accountType == AccountType.IN_MEMORY) {
+            return inMemoryAccountService.findById(id)
+                    .orElseThrow(() -> new UsernameNotFoundException("Account not found"));
+        }
         Optional<? extends User> user = accountType == AccountType.CLIENT
                 ? clientRepository.findByIdAndDeletedFalse(id)
                 : employeeRepository.findByIdAndDeletedFalse(id);

@@ -34,7 +34,7 @@ public class PasswordController {
     @GetMapping
     public String form(Model model) {
         model.addAttribute("passwordForm", new ChangePasswordDto());
-        model.addAttribute("forced", currentUserService.requireUser().mustChangePassword());
+        model.addAttribute("forced", currentUserService.requireStoredUser().mustChangePassword());
         return VIEW;
     }
 
@@ -42,7 +42,7 @@ public class PasswordController {
     public String change(@Valid @ModelAttribute("passwordForm") ChangePasswordDto dto, BindingResult result,
                          Model model, HttpServletRequest request, HttpServletResponse response,
                          RedirectAttributes redirectAttributes) {
-        CurrentUser current = currentUserService.requireUser();
+        CurrentUser current = currentUserService.requireStoredUser();
         model.addAttribute("forced", current.mustChangePassword());
         if (result.hasErrors()) {
             return VIEW;

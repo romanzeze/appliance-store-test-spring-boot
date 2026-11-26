@@ -123,7 +123,7 @@ public class OrderServiceImpl implements OrderService {
             throw new OperationNotAllowedException("error.order.alreadyApproved");
         }
         Employee employee = employeeRepository.findByIdAndDeletedFalse(actor.id())
-                .orElseThrow(() -> new ResourceNotFoundException("Employee", actor.id()));
+                .orElseThrow(() -> new OperationNotAllowedException("error.order.approverNotEmployee"));
         order.setApproved(true);
         order.setEmployee(employee);
         Orders saved = ordersRepository.save(order);

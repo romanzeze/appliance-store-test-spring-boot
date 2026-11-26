@@ -12,6 +12,8 @@ import com.epam.rd.autocode.assessment.appliances.model.Employee;
 import com.epam.rd.autocode.assessment.appliances.model.PowerType;
 import com.epam.rd.autocode.assessment.appliances.repository.ClientRepository;
 import com.epam.rd.autocode.assessment.appliances.repository.EmployeeRepository;
+import com.epam.rd.autocode.assessment.appliances.model.Role;
+import com.epam.rd.autocode.assessment.appliances.security.InMemoryAccountService;
 import com.epam.rd.autocode.assessment.appliances.service.EmailAvailabilityService;
 import jakarta.validation.ConstraintViolation;
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.math.BigDecimal;
@@ -49,7 +52,9 @@ class DtoValidationTest {
         context.registerBean(ClientRepository.class, () -> clientRepository);
         context.registerBean(EmployeeRepository.class, () -> employeeRepository);
         context.registerBean(EmailAvailabilityService.class,
-                () -> new EmailAvailabilityService(clientRepository, employeeRepository));
+                () -> new EmailAvailabilityService(clientRepository, employeeRepository,
+                        new InMemoryAccountService("support@memory.test", STRONG, "Support", Role.ADMIN,
+                                new BCryptPasswordEncoder(4))));
         context.refresh();
         validator = new LocalValidatorFactoryBean();
         validator.setApplicationContext(context);
@@ -154,6 +159,14 @@ class DtoValidationTest {
                 .thenReturn(Optional.of(new Client(7L, "Someone", "luka@example.com", "hash", "5326-0000")));
 
         assertEquals(Set.of("email"), fieldsWithErrors(registration(STRONG, STRONG)));
+    }
+
+    @Test
+    void registrationRejectsEmailReservedByInMemoryAccount() {
+        RegistrationDto dto = registration(STRONG, STRONG);
+        dto.setEmail("Support@Memory.test");
+
+        assertEquals(Set.of("email"), fieldsWithErrors(dto));
     }
 
     @Test

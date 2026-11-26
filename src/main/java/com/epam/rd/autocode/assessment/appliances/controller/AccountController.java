@@ -48,7 +48,7 @@ public class AccountController {
 
     @GetMapping
     public String profile(Model model) {
-        CurrentUser current = currentUserService.requireUser();
+        CurrentUser current = currentUserService.requireStoredUser();
         if (current.isStaff()) {
             model.addAttribute("employee", employeeService.findById(current.id()));
         }

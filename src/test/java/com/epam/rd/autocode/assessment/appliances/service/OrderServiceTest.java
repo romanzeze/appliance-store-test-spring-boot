@@ -230,6 +230,17 @@ class OrderServiceTest {
     }
 
     @Test
+    void accountWithoutEmployeeRecordCannotApprove() {
+        when(ordersRepository.findWithRowsByIdAndDeletedFalse(20L)).thenReturn(Optional.of(order(20L, false)));
+        when(employeeRepository.findByIdAndDeletedFalse(50L)).thenReturn(Optional.empty());
+
+        OperationNotAllowedException exception = assertThrows(OperationNotAllowedException.class,
+                () -> service.approve(20L, STAFF));
+
+        assertEquals("error.order.approverNotEmployee", exception.getMessageKey());
+    }
+
+    @Test
     void clientCannotApprove() {
         assertThrows(AccessDeniedException.class, () -> service.approve(20L, CLIENT));
     }

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -33,7 +34,9 @@ class AppUserDetailsServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AppUserDetailsService(clientRepository, employeeRepository, ServiceTestSupport.CLOCK);
+        service = new AppUserDetailsService(clientRepository, employeeRepository, ServiceTestSupport.CLOCK,
+                new InMemoryAccountService("support@memory.test", "Mem0ry!Support", "Support", Role.ADMIN,
+                        new BCryptPasswordEncoder(4)));
     }
 
     @Test
@@ -126,6 +129,16 @@ class AppUserDetailsServiceTest {
 
         assertThat(service.loadByAccount(AccountType.CLIENT, 3L).getId()).isEqualTo(3L);
         assertThatThrownBy(() -> service.loadByAccount(AccountType.CLIENT, 4L))
+                .isInstanceOf(UsernameNotFoundException.class);
+    }
+
+    @Test
+    void loadByAccountResolvesInMemoryAccountWithoutDatabase() {
+        AppUserDetails details = service.loadByAccount(AccountType.IN_MEMORY, InMemoryAccountService.ACCOUNT_ID);
+
+        assertThat(details.getEmail()).isEqualTo("support@memory.test");
+        assertThat(details.isInMemory()).isTrue();
+        assertThatThrownBy(() -> service.loadByAccount(AccountType.IN_MEMORY, 9L))
                 .isInstanceOf(UsernameNotFoundException.class);
     }
 }

@@ -33,7 +33,14 @@ public class AppUserDetails implements UserDetails, CredentialsContainer {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        SimpleGrantedAuthority roleAuthority = new SimpleGrantedAuthority("ROLE_" + role.name());
+        return isInMemory()
+                ? List.of(roleAuthority, new SimpleGrantedAuthority(InMemoryAccountService.AUTHORITY))
+                : List.of(roleAuthority);
+    }
+
+    public boolean isInMemory() {
+        return accountType == AccountType.IN_MEMORY;
     }
 
     @Override

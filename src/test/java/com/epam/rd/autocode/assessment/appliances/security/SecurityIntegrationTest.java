@@ -33,6 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SecurityIntegrationTest {
 
     private static final String PASSWORD = "Str0ng!Pass123";
+    private static final String MEMORY_EMAIL = "support@memory.test";
+    private static final String MEMORY_PASSWORD = "Mem0ry!Support";
 
     @Autowired
     private MockMvc mockMvc;
@@ -291,8 +293,41 @@ class SecurityIntegrationTest {
                 .andExpect(redirectedUrl("/login?logout"));
     }
 
+    @Test
+    void inMemoryAccountLogsInWithoutDatabaseRecord() throws Exception {
+        loginAttemptService.reset(MEMORY_EMAIL);
+        Cookie token = loginCookie(MEMORY_EMAIL, MEMORY_PASSWORD);
+
+        assertThat(jwtService.parse(token.getValue()).orElseThrow().accountType()).isEqualTo(AccountType.IN_MEMORY);
+        assertThat(mockMvc.perform(get("/employees").cookie(token)).andReturn().getResponse().getStatus())
+                .isEqualTo(200);
+        assertThat(mockMvc.perform(get("/audit").cookie(token)).andReturn().getResponse().getStatus())
+                .isEqualTo(200);
+        mockMvc.perform(get("/account").cookie(token)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/password/change").cookie(token)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void inMemoryAccountRejectsWrongPassword() throws Exception {
+        loginAttemptService.reset(MEMORY_EMAIL);
+        mockMvc.perform(formLogin("/login").user("email", MEMORY_EMAIL).password("Wrong!Pass123"))
+                .andExpect(redirectedUrl("/login?error"));
+        loginAttemptService.reset(MEMORY_EMAIL);
+    }
+
+    @Test
+    void databaseAccountsStillLogInAlongsideInMemoryOne() throws Exception {
+        mockMvc.perform(formLogin("/login").user("email", "larry@sec.test").password(MEMORY_PASSWORD))
+                .andExpect(redirectedUrl("/login?error"));
+        loginCookie("larry@sec.test");
+    }
+
     private Cookie loginCookie(String email) throws Exception {
-        String header = mockMvc.perform(formLogin("/login").user("email", email).password(PASSWORD))
+        return loginCookie(email, PASSWORD);
+    }
+
+    private Cookie loginCookie(String email, String password) throws Exception {
+        String header = mockMvc.perform(formLogin("/login").user("email", email).password(password))
                 .andExpect(redirectedUrl("/"))
                 .andReturn().getResponse().getHeader("Set-Cookie");
         String value = header.substring(header.indexOf('=') + 1, header.indexOf(';'));
